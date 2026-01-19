@@ -1,0 +1,5 @@
+{
+  "name": "BudgetLanding",
+  "description": "A financial piloting tool for IT teams to track actuals vs. forecast, manage resources, and simulate budget scenarios using Firebase and React.",
+  "requestFramePermissions": []
+}
