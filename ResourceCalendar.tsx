@@ -178,12 +178,13 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
         </div>
 
         <div className="flex items-center gap-6">
-           <div className="flex items-center gap-4 text-xs font-medium text-slate-500 border-r border-slate-200 pr-6">
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-slate-200 rounded-sm"></div> Work (1.0)</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-amber-100 border border-amber-200 rounded-sm"></div> Half (0.5)</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-slate-200 border border-slate-300 rounded-sm"></div> Off (0)</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-stripes-red rounded-sm border border-red-200"></div> Holiday</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-slate-300 rounded-sm border border-slate-400"></div> Not Emp.</span>
+           <div className="flex items-center gap-3 text-xs font-medium text-slate-500 border-r border-slate-200 pr-6">
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-slate-200 rounded-sm"></div>Work</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-amber-100 border border-amber-200 rounded-sm"></div>Half</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-100 border border-red-200 rounded-sm"></div>Leave</span>
+                 <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-purple-100 border border-purple-200 rounded-sm"></div>Holiday (Off)</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-green-100 border border-green-200 rounded-sm"></div>Worked WE/Holiday</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-slate-200 rounded-sm border border-slate-300"></div>Weekend</span>
             </div>
 
             <div 
@@ -342,7 +343,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                                     const dayNum = dayIndex + 1;
                                     
                                     if (dayNum > daysInMonth) {
-                                        return <div key={dayIndex} className="bg-slate-900 relative" />; 
+                                        return <div key={dayIndex} className="bg-slate-900 relative" />;
                                     }
 
                                     const currentDate = new Date(selectedYear, monthIndex, dayNum);
@@ -364,21 +365,24 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                                     }
 
                                     let bgClass = 'bg-white';
-                                    
-                                    if (val === 0) {
+                                    const isWorkedWEOrHoliday = (isWknd || isHoliday) && val > 0;
+
+                                    if (isWorkedWEOrHoliday) {
+                                        bgClass = 'bg-green-100';
+                                    } else if (val === 0) {
                                         if (isHoliday) {
-                                            bgClass = 'bg-[linear-gradient(45deg,#fee2e2_25%,#ffffff_25%,#ffffff_50%,#fee2e2_50%,#fee2e2_75%,#ffffff_75%,#ffffff_100%)] bg-[length:8px_8px]';
+                                            bgClass = 'bg-purple-100'; // Specific color for non-worked holidays
                                         } else if (isWknd) {
-                                            bgClass = 'bg-slate-200';
+                                            bgClass = 'bg-slate-200'; // Weekend
                                         } else {
-                                            bgClass = 'bg-red-100';
+                                            bgClass = 'bg-red-100'; // Regular leave
                                         }
                                     } else if (val === 0.5) {
                                         bgClass = 'bg-amber-100';
                                     } else if (val === 1) {
                                         bgClass = 'bg-white';
-                                        if (isWknd || isHoliday) bgClass = 'bg-green-100';
                                     }
+
 
                                     return (
                                         <button 
@@ -391,14 +395,11 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                                             `}
                                             title={`${formatDateDisplay(format(currentDate, 'yyyy-MM-dd'))}: ${val * 100}% ${isHoliday ? '(Holiday)' : ''}`}
                                         >
-                                            <span className={`text-[10px] font-medium ${isWknd || val === 0 ? 'text-slate-400' : 'text-slate-600'}`}>
+                                            <span className={`text-[10px] font-bold ${isWknd || val === 0 ? 'text-slate-500' : 'text-slate-700'}`}>
                                                 {val === 0.5 ? '½' : ''}
                                                 {val === 0 && !isWknd && !isHoliday ? '0' : ''}
+                                                {isHoliday && val === 0 ? 'F' : ''}
                                             </span>
-                                            
-                                            {isHoliday && (
-                                                <Gift className="w-3 h-3 text-red-400 opacity-70" />
-                                            )}
 
                                             {/* Dot Override Indicator */}
                                             {overrideActive && (

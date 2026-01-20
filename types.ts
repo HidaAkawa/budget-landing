@@ -39,6 +39,7 @@ export interface Resource {
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
   overrides: OverrideMap;
+  dynamicHolidays?: string[]; // Holds dates of holidays loaded from external APIs
   totalCost?: number; 
   totalDays?: number;
 }

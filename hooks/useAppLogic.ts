@@ -1,36 +1,81 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { BudgetEnvelope, EnvelopeType, Scenario, ScenarioStatus, AuditLog, ScenarioSnapshot, Resource, OverrideValue } from '../types';
 import { eachDayOfInterval, format } from 'date-fns';
-import { HOLIDAYS } from '../constants';
+import { User } from 'firebase/auth';
+import { db } from '../services/firebase';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
-const INITIAL_ENVELOPES: BudgetEnvelope[] = [
-  { id: '1', name: 'Maintenance Application', type: EnvelopeType.RUN, amount: 1200000 },
-  { id: '2', name: 'Projet Migration Cloud', type: EnvelopeType.CHANGE, amount: 850000 },
-  { id: '3', name: 'Support N3', type: EnvelopeType.RUN, amount: 400000 },
-  { id: '4', name: 'Nouvelle Feature IA', type: EnvelopeType.CHANGE, amount: 300000 },
-];
-
-const MOCK_USER = "John Doe (john.doe@company.com)";
-
-export function useAppLogic() {
-  const [scenario, setScenario] = useState<Scenario>({
+const INITIAL_SCENARIO: Scenario = {
     id: 'sc-1',
     name: 'Budget IT 2026',
     status: ScenarioStatus.DRAFT,
-    envelopes: INITIAL_ENVELOPES,
+    envelopes: [
+        { id: '1', name: 'Maintenance Application', type: EnvelopeType.RUN, amount: 1200000 },
+        { id: '2', name: 'Projet Migration Cloud', type: EnvelopeType.CHANGE, amount: 850000 },
+        { id: '3', name: 'Support N3', type: EnvelopeType.RUN, amount: 400000 },
+        { id: '4', name: 'Nouvelle Feature IA', type: EnvelopeType.CHANGE, amount: 300000 },
+    ],
     resources: [],
     auditLogs: [],
     snapshots: [],
     createdAt: Date.now(),
     updatedAt: Date.now(),
-  });
+};
 
-  // --- Internal Helpers ---
+const SCENARIO_DOC_ID = "shared-scenario-v1";
+
+export function useAppLogic(user: User | null) {
+  const [scenario, setScenario] = useState<Scenario>(INITIAL_SCENARIO);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // --- Firestore Real-time Sync ---
+  useEffect(() => {
+    if (!user) {
+        setScenario(INITIAL_SCENARIO);
+        setIsLoading(false);
+        return;
+    }
+
+    setIsLoading(true);
+    const scenarioRef = doc(db, "scenarios", SCENARIO_DOC_ID);
+
+    const unsubscribe = onSnapshot(scenarioRef, async (docSnap) => {
+        if (docSnap.exists()) {
+            setScenario(docSnap.data() as Scenario);
+            setIsLoading(false);
+        } else {
+            // The document doesn't exist, so we create it.
+            // The listener will automatically pick up the new state.
+            try {
+                await setDoc(scenarioRef, INITIAL_SCENARIO);
+            } catch (error) {
+                console.error("Error creating initial scenario:", error);
+                setIsLoading(false); // Stop loading on error
+            }
+        }
+    }, (error) => {
+        console.error("Error listening to scenario changes:", error);
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // --- Internal Helper to Update DB ---
+  const updateScenarioInDb = async (updatedScenario: Scenario) => {
+    const scenarioRef = doc(db, "scenarios", SCENARIO_DOC_ID);
+    try {
+        await setDoc(scenarioRef, updatedScenario, { merge: true });
+    } catch (error) {
+        console.error("Error updating scenario in DB:", error);
+    }
+  };
+  
   const logAction = (action: string, details: string, entityType: AuditLog['entityType'], entityId?: string) => {
     const newLog: AuditLog = {
       id: Math.random().toString(36).substr(2, 9),
       timestamp: Date.now(),
-      user: MOCK_USER,
+      user: user ? `${user.displayName} (${user.email})` : 'System',
       action,
       details,
       entityType,
@@ -41,262 +86,195 @@ export function useAppLogic() {
 
   // --- Envelope Management ---
   const addEnvelope = (envelope: BudgetEnvelope) => {
-    setScenario(prev => {
-      const log = logAction('CREATE', `Created envelope "${envelope.name}" (${envelope.amount}€)`, 'ENVELOPE', envelope.id);
-      return {
-        ...prev,
-        envelopes: [...prev.envelopes, envelope],
-        auditLogs: [log, ...prev.auditLogs],
-        updatedAt: Date.now()
-      };
-    });
+    const updatedScenario = {
+      ...scenario,
+      envelopes: [...scenario.envelopes, envelope],
+      auditLogs: [logAction('CREATE', `Created envelope "${envelope.name}"`, 'ENVELOPE', envelope.id), ...scenario.auditLogs],
+      updatedAt: Date.now(),
+    };
+    updateScenarioInDb(updatedScenario);
   };
 
   const updateEnvelope = (id: string, updates: Partial<BudgetEnvelope>) => {
-    setScenario(prev => {
-      const oldEnv = prev.envelopes.find(e => e.id === id);
-      if (!oldEnv) return prev;
+    const oldEnv = scenario.envelopes.find(e => e.id === id);
+    if (!oldEnv) return;
 
-      const newEnv = { ...oldEnv, ...updates };
-      
-      // Calculate diff for audit log
-      const changes: string[] = [];
-      if (oldEnv.name !== newEnv.name) changes.push(`Name: ${oldEnv.name} -> ${newEnv.name}`);
-      if (oldEnv.amount !== newEnv.amount) changes.push(`Amount: ${oldEnv.amount} -> ${newEnv.amount}`);
-      if (oldEnv.type !== newEnv.type) changes.push(`Type: ${oldEnv.type} -> ${newEnv.type}`);
-
-      if (changes.length === 0) return prev;
-
-      const log = logAction('UPDATE', `Updated envelope "${newEnv.name}": ${changes.join(', ')}`, 'ENVELOPE', id);
-
-      return {
-        ...prev,
-        envelopes: prev.envelopes.map(e => e.id === id ? newEnv : e),
-        auditLogs: [log, ...prev.auditLogs],
-        updatedAt: Date.now()
-      };
-    });
+    const newEnv = { ...oldEnv, ...updates };
+    const changes = Object.keys(updates).map(key => `${key}: ${oldEnv[key as keyof BudgetEnvelope]} -> ${updates[key as keyof Partial<BudgetEnvelope>]}`).join(', ');
+    
+    const updatedScenario = {
+        ...scenario,
+        envelopes: scenario.envelopes.map(e => e.id === id ? newEnv : e),
+        auditLogs: [logAction('UPDATE', `Updated envelope "${newEnv.name}": ${changes}`, 'ENVELOPE', id), ...scenario.auditLogs],
+        updatedAt: Date.now(),
+    };
+    updateScenarioInDb(updatedScenario);
   };
 
   const deleteEnvelope = (id: string) => {
-    setScenario(prev => {
-      const env = prev.envelopes.find(e => e.id === id);
-      const log = logAction('DELETE', `Deleted envelope "${env?.name}"`, 'ENVELOPE', id);
-      return {
-        ...prev,
-        envelopes: prev.envelopes.filter(e => e.id !== id),
-        auditLogs: [log, ...prev.auditLogs],
-        updatedAt: Date.now()
-      };
-    });
+    const env = scenario.envelopes.find(e => e.id === id);
+    const updatedScenario = {
+        ...scenario,
+        envelopes: scenario.envelopes.filter(e => e.id !== id),
+        auditLogs: [logAction('DELETE', `Deleted envelope "${env?.name}"`, 'ENVELOPE', id), ...scenario.auditLogs],
+        updatedAt: Date.now(),
+    };
+    updateScenarioInDb(updatedScenario);
   };
 
   // --- Resource Management ---
   const addResource = (resource: Resource) => {
-    setScenario(prev => {
-      const log = logAction('CREATE', `Created resource "${resource.firstName} ${resource.lastName}" (${resource.startDate} to ${resource.endDate})`, 'RESOURCE', resource.id);
-      return {
-        ...prev,
-        resources: [...prev.resources, resource],
-        auditLogs: [log, ...prev.auditLogs],
-        updatedAt: Date.now()
-      };
-    });
+    const updatedScenario = {
+        ...scenario,
+        resources: [...scenario.resources, resource],
+        auditLogs: [logAction('CREATE', `Created resource "${resource.firstName}"`, 'RESOURCE', resource.id), ...scenario.auditLogs],
+        updatedAt: Date.now(),
+    };
+    updateScenarioInDb(updatedScenario);
   };
 
   const updateResource = (id: string, updates: Partial<Resource>) => {
-    setScenario(prev => {
-      const oldRes = prev.resources.find(r => r.id === id);
-      if (!oldRes) return prev;
+    const oldRes = scenario.resources.find(r => r.id === id);
+    if (!oldRes) return;
 
-      const newRes = { ...oldRes, ...updates };
-      
-      const changes: string[] = [];
-      if (oldRes.firstName !== newRes.firstName) changes.push(`First Name: ${oldRes.firstName} -> ${newRes.firstName}`);
-      if (oldRes.lastName !== newRes.lastName) changes.push(`Last Name: ${oldRes.lastName} -> ${newRes.lastName}`);
-      if (oldRes.tjm !== newRes.tjm) changes.push(`TJM: ${oldRes.tjm} -> ${newRes.tjm}`);
-      if (oldRes.country !== newRes.country) changes.push(`Country: ${oldRes.country} -> ${newRes.country}`);
-      if (oldRes.ratioChange !== newRes.ratioChange) changes.push(`Change %: ${oldRes.ratioChange} -> ${newRes.ratioChange}`);
-      if (oldRes.startDate !== newRes.startDate) changes.push(`Start Date: ${oldRes.startDate} -> ${newRes.startDate}`);
-      if (oldRes.endDate !== newRes.endDate) changes.push(`End Date: ${oldRes.endDate} -> ${newRes.endDate}`);
+    const newRes = { ...oldRes, ...updates };
+    const changes = Object.keys(updates).map(key => `${key}: ${oldRes[key as keyof Resource]} -> ${updates[key as keyof Partial<Resource>]}`).join(', ');
 
-      if (changes.length === 0) return prev;
-
-      const log = logAction('UPDATE', `Updated resource "${newRes.firstName} ${newRes.lastName}": ${changes.join(', ')}`, 'RESOURCE', id);
-
-      return {
-        ...prev,
-        resources: prev.resources.map(r => r.id === id ? newRes : r),
-        auditLogs: [log, ...prev.auditLogs],
-        updatedAt: Date.now()
-      };
-    });
+    const updatedScenario = {
+        ...scenario,
+        resources: scenario.resources.map(r => r.id === id ? newRes : r),
+        auditLogs: [logAction('UPDATE', `Updated resource "${newRes.firstName}": ${changes}`, 'RESOURCE', id), ...scenario.auditLogs],
+        updatedAt: Date.now(),
+    };
+    updateScenarioInDb(updatedScenario);
   };
 
   const updateResourceOverride = (resourceId: string, date: string, value: OverrideValue | undefined) => {
-    setScenario(prev => {
-      const res = prev.resources.find(r => r.id === resourceId);
-      if (!res) return prev;
+    const res = scenario.resources.find(r => r.id === resourceId);
+    if (!res) return;
 
-      // Create a new overrides object
-      const newOverrides = { ...res.overrides };
-      if (value === undefined) {
-        delete newOverrides[date];
-      } else {
-        newOverrides[date] = value;
-      }
+    const newOverrides = { ...res.overrides };
+    if (value === undefined) {
+      delete newOverrides[date];
+    } else {
+      newOverrides[date] = value;
+    }
 
-      const log = logAction(
-        'UPDATE', 
-        `Updated calendar for "${res.firstName} ${res.lastName}" on ${date}: ${value ?? 'Default'}`, 
-        'RESOURCE', 
-        resourceId
-      );
-
-      return {
-        ...prev,
-        resources: prev.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides } : r),
-        auditLogs: [log, ...prev.auditLogs],
-        updatedAt: Date.now()
-      };
-    });
+    const updatedResources = scenario.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides } : r);
+    const updatedScenario = {
+        ...scenario,
+        resources: updatedResources,
+        auditLogs: [logAction('UPDATE', `Override for ${res.firstName} on ${date} to ${value}`, 'RESOURCE', resourceId), ...scenario.auditLogs],
+        updatedAt: Date.now(),
+    };
+    updateScenarioInDb(updatedScenario);
   };
 
   const bulkUpdateResourceOverrides = (resourceId: string, startDate: Date, endDate: Date, value: OverrideValue | undefined) => {
-    setScenario(prev => {
-      const res = prev.resources.find(r => r.id === resourceId);
-      if (!res) return prev;
+    const res = scenario.resources.find(r => r.id === resourceId);
+    if (!res) return;
 
-      const newOverrides = { ...res.overrides };
-      const days = eachDayOfInterval({ start: startDate, end: endDate });
-      
-      days.forEach(day => {
+    const newOverrides = { ...res.overrides };
+    const days = eachDayOfInterval({ start: startDate, end: endDate });
+    days.forEach(day => {
         const dateStr = format(day, 'yyyy-MM-dd');
         if (value === undefined) {
-          delete newOverrides[dateStr];
+            delete newOverrides[dateStr];
         } else {
-          newOverrides[dateStr] = value;
+            newOverrides[dateStr] = value;
         }
-      });
-
-      const log = logAction(
-        'UPDATE', 
-        `Bulk update calendar for "${res.firstName} ${res.lastName}": ${format(startDate, 'yyyy-MM-dd')} to ${format(endDate, 'yyyy-MM-dd')} set to ${value ?? 'Default'}`, 
-        'RESOURCE', 
-        resourceId
-      );
-
-      return {
-        ...prev,
-        resources: prev.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides } : r),
-        auditLogs: [log, ...prev.auditLogs],
-        updatedAt: Date.now()
-      };
     });
+
+    const updatedResources = scenario.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides } : r);
+    const updatedScenario = {
+        ...scenario,
+        resources: updatedResources,
+        auditLogs: [logAction('UPDATE', `Bulk override for ${res.firstName} from ${format(startDate, 'yyyy-MM-dd')} to ${format(endDate, 'yyyy-MM-dd')}`, 'RESOURCE', resourceId), ...scenario.auditLogs],
+        updatedAt: Date.now(),
+    };
+    updateScenarioInDb(updatedScenario);
   };
 
-  const applyResourceHolidays = (resourceId: string, year: number, externalHolidays?: string[]) => {
-    setScenario(prev => {
-      const res = prev.resources.find(r => r.id === resourceId);
-      if (!res) return prev;
+  const applyResourceHolidays = (resourceId: string, year: number, externalHolidays: string[]) => {
+    const res = scenario.resources.find(r => r.id === resourceId);
+    if (!res) return;
 
-      let holidaysToApply: string[] = [];
-
-      if (externalHolidays && externalHolidays.length > 0) {
-        holidaysToApply = externalHolidays;
-      } else {
-        // Fallback to constants if no external holidays provided
-        const countryHolidays = HOLIDAYS[res.country] || [];
-        holidaysToApply = countryHolidays.filter(d => d.startsWith(`${year}-`));
-      }
-
-      const newOverrides = { ...res.overrides };
-      
-      // For each holiday, set it to 0 (Off)
-      holidaysToApply.forEach(dateStr => {
+    const newOverrides = { ...res.overrides };
+    externalHolidays.forEach(dateStr => {
         newOverrides[dateStr] = 0;
-      });
-
-      const log = logAction(
-        'UPDATE', 
-        `Imported ${holidaysToApply.length} holidays for ${year} (${res.country}) for "${res.firstName} ${res.lastName}"`, 
-        'RESOURCE', 
-        resourceId
-      );
-
-      return {
-        ...prev,
-        resources: prev.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides } : r),
-        auditLogs: [log, ...prev.auditLogs],
-        updatedAt: Date.now()
-      };
     });
+
+    const newDynamicHolidays = [...new Set([...(res.dynamicHolidays || []), ...externalHolidays])];
+    const updatedResources = scenario.resources.map(r => 
+        r.id === resourceId 
+        ? { ...r, overrides: newOverrides, dynamicHolidays: newDynamicHolidays } 
+        : r
+    );
+
+    const updatedScenario = {
+        ...scenario,
+        resources: updatedResources,
+        auditLogs: [logAction('UPDATE', `Applied ${externalHolidays.length} holidays for ${res.firstName}`, 'RESOURCE', resourceId), ...scenario.auditLogs],
+        updatedAt: Date.now(),
+    };
+    updateScenarioInDb(updatedScenario);
   };
 
   const deleteResource = (id: string) => {
-    setScenario(prev => {
-      const res = prev.resources.find(r => r.id === id);
-      const log = logAction('DELETE', `Deleted resource "${res?.firstName} ${res?.lastName}"`, 'RESOURCE', id);
-      return {
-        ...prev,
-        resources: prev.resources.filter(r => r.id !== id),
-        auditLogs: [log, ...prev.auditLogs],
-        updatedAt: Date.now()
-      };
-    });
+    const res = scenario.resources.find(r => r.id === id);
+    const updatedScenario = {
+        ...scenario,
+        resources: scenario.resources.filter(r => r.id !== id),
+        auditLogs: [logAction('DELETE', `Deleted resource "${res?.firstName}"`, 'RESOURCE', id), ...scenario.auditLogs],
+        updatedAt: Date.now(),
+    };
+    updateScenarioInDb(updatedScenario);
   };
 
   // --- Simulation / Versioning ---
-
   const createSnapshot = (name: string) => {
-    setScenario(prev => {
-      const snapshot: ScenarioSnapshot = {
-        id: Math.random().toString(36).substr(2, 9),
-        name,
-        date: Date.now(),
-        envelopes: JSON.parse(JSON.stringify(prev.envelopes)), // Deep copy
-      };
-      
-      const log = logAction('SNAPSHOT', `Created version "${name}"`, 'SCENARIO');
-      
-      return {
-        ...prev,
-        snapshots: [snapshot, ...prev.snapshots],
-        auditLogs: [log, ...prev.auditLogs]
-      };
-    });
+    const snapshot: ScenarioSnapshot = {
+      id: Math.random().toString(36).substr(2, 9),
+      name,
+      date: Date.now(),
+      envelopes: JSON.parse(JSON.stringify(scenario.envelopes)),
+      resources: JSON.parse(JSON.stringify(scenario.resources)),
+    };
+    const updatedScenario = {
+        ...scenario,
+        snapshots: [snapshot, ...scenario.snapshots],
+        auditLogs: [logAction('SNAPSHOT', `Created snapshot "${name}"`, 'SCENARIO'), ...scenario.auditLogs],
+    };
+    updateScenarioInDb(updatedScenario);
   };
 
   const restoreSnapshot = (snapshotId: string) => {
-    setScenario(prev => {
-      const snapshot = prev.snapshots.find(s => s.id === snapshotId);
-      if (!snapshot) return prev;
+    const snapshot = scenario.snapshots.find(s => s.id === snapshotId);
+    if (!snapshot) return;
 
-      const log = logAction('RESTORE', `Restored version "${snapshot.name}"`, 'SCENARIO');
-
-      return {
-        ...prev,
+    const updatedScenario = {
+        ...scenario,
         envelopes: JSON.parse(JSON.stringify(snapshot.envelopes)),
-        auditLogs: [log, ...prev.auditLogs],
-        updatedAt: Date.now()
-      };
-    });
+        resources: JSON.parse(JSON.stringify(snapshot.resources)),
+        auditLogs: [logAction('RESTORE', `Restored snapshot "${snapshot.name}"`, 'SCENARIO'), ...scenario.auditLogs],
+        updatedAt: Date.now(),
+    };
+    updateScenarioInDb(updatedScenario);
   };
 
   const publishScenario = () => {
-    setScenario(prev => {
-      const log = logAction('PUBLISH', `Scenario published as MASTER`, 'SCENARIO');
-      return {
-        ...prev,
+    const updatedScenario = {
+        ...scenario,
         status: ScenarioStatus.MASTER,
-        auditLogs: [log, ...prev.auditLogs],
-        updatedAt: Date.now()
-      };
-    });
+        auditLogs: [logAction('PUBLISH', `Published scenario to MASTER`, 'SCENARIO'), ...scenario.auditLogs],
+        updatedAt: Date.now(),
+    };
+    updateScenarioInDb(updatedScenario);
   };
 
   return {
     scenario,
+    isLoading,
     addEnvelope,
     updateEnvelope,
     deleteEnvelope,
