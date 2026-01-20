@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { TrendingDown, TrendingUp, AlertCircle, CheckCircle, PieChart, Wallet, CreditCard } from 'lucide-react';
+import { TrendingDown, TrendingUp, AlertCircle, CheckCircle, PieChart, Wallet } from 'lucide-react';
 import { BudgetEnvelope, EnvelopeType, Resource } from './types';
-import { startOfYear, endOfYear, eachDayOfInterval, format, isWeekend } from 'date-fns';
-import { HOLIDAYS } from './constants';
+import { startOfYear, endOfYear, eachDayOfInterval } from 'date-fns';
+import { calculateDayStatus } from './utils';
 
 const formatCurrency = (val: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
 const formatCompact = (val: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 1, notation: "compact" }).format(val);
@@ -14,8 +14,6 @@ interface DashboardViewProps {
 
 export default function DashboardView({ envelopes, resources }: DashboardViewProps) {
   const currentYear = new Date().getFullYear();
-  const defaultStartDate = `${currentYear}-01-01`;
-  const defaultEndDate = `${currentYear}-12-31`;
 
   // --- Calculation Logic ---
   const stats = useMemo(() => {
@@ -35,22 +33,9 @@ export default function DashboardView({ envelopes, resources }: DashboardViewPro
     resources.forEach(res => {
         // Calculate total days for this resource in current year
         let workingDays = 0;
-        const resStart = res.startDate || defaultStartDate;
-        const resEnd = res.endDate || defaultEndDate;
-
+        
         daysInterval.forEach(day => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            
-            // Skip days out of contract
-            if (dateStr < resStart || dateStr > resEnd) {
-                return;
-            }
-
-            const isHoliday = HOLIDAYS[res.country]?.includes(dateStr);
-            const isWknd = isWeekend(day);
-            const defaultVal = (isHoliday || isWknd) ? 0 : 1;
-            const override = res.overrides[dateStr];
-            const val = override !== undefined ? override : defaultVal;
+            const { val } = calculateDayStatus(day, res);
             workingDays += val;
         });
 

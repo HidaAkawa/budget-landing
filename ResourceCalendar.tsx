@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { ArrowLeft, Gift, Layers, Check, Download, ChevronLeft, ChevronRight, Calculator, Banknote, Loader2, CalendarRange } from 'lucide-react';
 import { format, endOfMonth, eachDayOfInterval, isWeekend, addDays, startOfMonth } from 'date-fns';
 import { Resource, OverrideValue, Country } from './types';
-import { HOLIDAYS } from './constants';
+import { calculateDayStatus } from './utils';
 
 const formatCurrency = (val: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
 
@@ -32,28 +32,11 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
   const [bulkEnd, setBulkEnd] = useState('');
   const [bulkValue, setBulkValue] = useState<string>('0');
 
-  // Helper to determine day status
-  const getDayState = (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    
-    // Check bounds
-    const isOutOfBounds = dateStr < resource.startDate || dateStr > resource.endDate;
-    
-    const isHoliday = HOLIDAYS[resource.country]?.includes(dateStr);
-    const isWknd = isWeekend(date);
-    const defaultVal = (isHoliday || isWknd) ? 0 : 1;
-    const override = resource.overrides[dateStr];
-    const val = override !== undefined ? override : defaultVal;
-    
-    return { val, defaultVal, isHoliday, isWknd, overrideActive: override !== undefined, isOutOfBounds };
-  };
-
   const handleDayClick = (date: Date) => {
-    const { isOutOfBounds } = getDayState(date);
+    const { isOutOfBounds, val, defaultVal } = calculateDayStatus(date, resource);
     if (isOutOfBounds) return;
 
     const dateStr = format(date, 'yyyy-MM-dd');
-    const { val, defaultVal } = getDayState(date);
     let nextVal: OverrideValue = val === 1 ? 0.5 : val === 0.5 ? 0 : 1;
     onUpdateOverride(dateStr, nextVal === defaultVal ? undefined : nextVal);
   };
@@ -137,7 +120,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
     const days = eachDayOfInterval({ start, end });
     
     days.forEach(day => {
-        const { val, isOutOfBounds } = getDayState(day);
+        const { val, isOutOfBounds } = calculateDayStatus(day, resource);
         if (!isOutOfBounds) {
             total += val;
         }
@@ -148,6 +131,8 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
   const yearlyCost = yearlyStats * resource.tjm;
 
   // Monthly Stats Calculation Helper
+  // Optimized: Calculate all months at once in a memo if needed, but here simple usage is fine.
+  // For better performance, we could compute all monthly stats in one loop, but let's keep it simple for now as per plan.
   const getMonthlyStats = (monthIndex: number) => {
     let total = 0;
     const start = startOfMonth(new Date(selectedYear, monthIndex, 1));
@@ -155,7 +140,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
     const days = eachDayOfInterval({ start, end });
     
     days.forEach(day => {
-        const { val, isOutOfBounds } = getDayState(day);
+        const { val, isOutOfBounds } = calculateDayStatus(day, resource);
         if (!isOutOfBounds) {
             total += val;
         }
@@ -361,7 +346,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                                     }
 
                                     const currentDate = new Date(selectedYear, monthIndex, dayNum);
-                                    const { val, isHoliday, isWknd, overrideActive, isOutOfBounds } = getDayState(currentDate);
+                                    const { val, isHoliday, isWknd, overrideActive, isOutOfBounds } = calculateDayStatus(currentDate, resource);
 
                                     // Base Background for Out of Bounds
                                     if (isOutOfBounds) {
