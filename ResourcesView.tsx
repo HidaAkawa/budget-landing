@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, Edit2, User, X, Check, Globe, CreditCard, Percent, Calendar as CalendarIcon, Calculator, Banknote, CalendarRange } from 'lucide-react';
+import { Plus, Trash2, Edit2, User, X, Check, Globe, CreditCard, Percent, Calendar as CalendarIcon, Calculator, Banknote, CalendarRange, Lock } from 'lucide-react';
 import { Resource, Country, OverrideValue } from './types';
 import ResourceCalendar from './ResourceCalendar';
 import { format, eachDayOfInterval, isWeekend, startOfYear, endOfYear } from 'date-fns';
@@ -24,9 +24,10 @@ interface ResourcesViewProps {
   onUpdateOverride: (resourceId: string, date: string, value: OverrideValue | undefined) => void;
   onBulkUpdateOverride?: (resourceId: string, start: Date, end: Date, value: OverrideValue | undefined) => void;
   onApplyHolidays?: (resourceId: string, year: number, holidays?: string[]) => void;
+  isReadOnly?: boolean; // New prop
 }
 
-export default function ResourcesView({ resources, onAdd, onUpdate, onDelete, onUpdateOverride, onBulkUpdateOverride, onApplyHolidays }: ResourcesViewProps) {
+export default function ResourcesView({ resources, onAdd, onUpdate, onDelete, onUpdateOverride, onBulkUpdateOverride, onApplyHolidays, isReadOnly = false }: ResourcesViewProps) {
   // View State: Store ID instead of object to prevent stale data
   const [calendarResourceId, setCalendarResourceId] = useState<string | null>(null);
 
@@ -91,6 +92,7 @@ export default function ResourcesView({ resources, onAdd, onUpdate, onDelete, on
             onBulkUpdate={(start, end, val) => onBulkUpdateOverride && onBulkUpdateOverride(calendarResource.id, start, end, val)}
             onUpdateResource={onUpdate}
             onApplyHolidays={(id, year, holidays) => onApplyHolidays && onApplyHolidays(id, year, holidays)}
+            isReadOnly={isReadOnly} // Pass down readonly prop
         />
     );
   }
@@ -98,6 +100,7 @@ export default function ResourcesView({ resources, onAdd, onUpdate, onDelete, on
   // --- Normal List View ---
 
   const handleEditClick = (res: Resource) => {
+    if (isReadOnly) return;
     setEditingId(res.id);
     setFirstName(res.firstName);
     setLastName(res.lastName);
@@ -121,6 +124,7 @@ export default function ResourcesView({ resources, onAdd, onUpdate, onDelete, on
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
     if (!firstName || !lastName || !tjm || !startDate || !endDate) return;
 
     if (startDate > endDate) {
@@ -165,7 +169,7 @@ export default function ResourcesView({ resources, onAdd, onUpdate, onDelete, on
   return (
     <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* List */}
-        <div className="lg:col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+        <div className={`${isReadOnly ? 'lg:col-span-4' : 'lg:col-span-3'} bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col`}>
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div className="flex items-center gap-3">
                     <h3 className="font-semibold text-slate-800 flex items-center gap-2">
@@ -242,8 +246,12 @@ export default function ResourcesView({ resources, onAdd, onUpdate, onDelete, on
                                             >
                                                 <CalendarIcon className="w-4 h-4" />
                                             </button>
-                                            <button onClick={() => handleEditClick(res)} className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors"><Edit2 className="w-4 h-4" /></button>
-                                            <button onClick={() => onDelete(res.id)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                            {!isReadOnly && (
+                                                <>
+                                                    <button onClick={() => handleEditClick(res)} className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors"><Edit2 className="w-4 h-4" /></button>
+                                                    <button onClick={() => onDelete(res.id)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -259,8 +267,9 @@ export default function ResourcesView({ resources, onAdd, onUpdate, onDelete, on
             </div>
         </div>
 
-        {/* Form */}
-        <div className={`bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-fit transition-all ${editingId ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}>
+        {/* Form - HIDDEN IN READONLY */}
+        {!isReadOnly && (
+            <div className={`bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-fit transition-all ${editingId ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}>
              <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
                 {editingId ? (
                     <>
@@ -336,7 +345,16 @@ export default function ResourcesView({ resources, onAdd, onUpdate, onDelete, on
                     </button>
                 </div>
             </form>
-        </div>
+            </div>
+        )}
+        
+        {isReadOnly && (
+            <div className="lg:col-span-4 bg-slate-50 rounded-xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center text-slate-400 mt-0">
+                <Lock className="w-12 h-12 mb-3 text-slate-300" />
+                <h3 className="font-medium text-slate-600">Modification Verrouillée</h3>
+                <p className="text-sm mt-1 max-w-xs">Vous consultez une version archivée ou publiée (MASTER). Passez sur un DRAFT pour éditer.</p>
+            </div>
+        )}
     </div>
   );
 }

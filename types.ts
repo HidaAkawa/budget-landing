@@ -44,32 +44,14 @@ export interface Resource {
   totalDays?: number;
 }
 
-export interface AuditLog {
-  id: string;
-  timestamp: number;
-  user: string;
-  action: string;
-  details: string;
-  entityType: 'ENVELOPE' | 'RESOURCE' | 'SCENARIO';
-  entityId?: string;
-}
-
-export interface ScenarioSnapshot {
-  id: string;
-  name: string;
-  date: number;
-  envelopes: BudgetEnvelope[];
-  // In a full app, would also include resources
-}
-
 export interface Scenario {
   id: string;
   name: string;
   status: ScenarioStatus;
+  ownerId?: string; // ID of the user who owns this draft
+  parentId?: string; // ID of the MASTER scenario this draft was based on
   envelopes: BudgetEnvelope[];
   resources: Resource[];
-  auditLogs: AuditLog[];
-  snapshots: ScenarioSnapshot[];
   createdAt: number;
   updatedAt: number;
 }

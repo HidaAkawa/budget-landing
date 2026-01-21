@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, Gift, Layers, Check, Download, ChevronLeft, ChevronRight, Calculator, Banknote, Loader2, CalendarRange } from 'lucide-react';
+import { ArrowLeft, Gift, Layers, Check, Download, ChevronLeft, ChevronRight, Calculator, Banknote, Loader2, CalendarRange, Lock } from 'lucide-react';
 import { format, endOfMonth, eachDayOfInterval, isWeekend, addDays, startOfMonth } from 'date-fns';
 import { Resource, OverrideValue, Country } from './types';
 import { calculateDayStatus } from './utils';
@@ -20,9 +20,10 @@ interface ResourceCalendarProps {
   onUpdateResource: (id: string, updates: Partial<Resource>) => void;
   onApplyHolidays: (id: string, year: number, holidays: string[]) => void;
   onBack: () => void;
+  isReadOnly?: boolean; // Prop propagated
 }
 
-export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpdate, onUpdateResource, onApplyHolidays, onBack }: ResourceCalendarProps) {
+export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpdate, onUpdateResource, onApplyHolidays, onBack, isReadOnly = false }: ResourceCalendarProps) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [statsMode, setStatsMode] = useState<'days' | 'cost'>('days');
   const [isLoadingHolidays, setIsLoadingHolidays] = useState(false);
@@ -33,6 +34,8 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
   const [bulkValue, setBulkValue] = useState<string>('0');
 
   const handleDayClick = (date: Date) => {
+    if (isReadOnly) return; // Prevent edit
+
     const { isOutOfBounds, val, defaultVal } = calculateDayStatus(date, resource);
     if (isOutOfBounds) return;
 
@@ -66,6 +69,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
 
   const handleBulkApply = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
     if (!bulkStart || !bulkEnd) return;
     
     const start = parseLocalDate(bulkStart);
@@ -81,6 +85,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
   };
 
   const handleLoadHolidays = async () => {
+    if (isReadOnly) return;
     setIsLoadingHolidays(true);
     try {
         // Fetch from Public API
@@ -131,8 +136,6 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
   const yearlyCost = yearlyStats * resource.tjm;
 
   // Monthly Stats Calculation Helper
-  // Optimized: Calculate all months at once in a memo if needed, but here simple usage is fine.
-  // For better performance, we could compute all monthly stats in one loop, but let's keep it simple for now as per plan.
   const getMonthlyStats = (monthIndex: number) => {
     let total = 0;
     const start = startOfMonth(new Date(selectedYear, monthIndex, 1));
@@ -159,38 +162,31 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
           <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
-              {resource.firstName} {resource.lastName}
-              <select 
-                value={resource.country}
-                onChange={(e) => onUpdateResource(resource.id, { country: e.target.value as Country })}
-                className="text-sm font-normal bg-slate-100 pl-2 pr-8 py-1 rounded text-slate-600 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
-              >
-                {Object.values(Country).map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </h2>
-            <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-                <CalendarRange className="w-3 h-3" />
-                <span>Contract: {formatDateDisplay(resource.startDate)} to {formatDateDisplay(resource.endDate)}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-6">
-           <div className="flex items-center gap-3 text-xs font-medium text-slate-500 border-r border-slate-200 pr-6">
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-slate-200 rounded-sm"></div>Work</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-amber-100 border border-amber-200 rounded-sm"></div>Half</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-100 border border-red-200 rounded-sm"></div>Leave</span>
-                 <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-purple-100 border border-purple-200 rounded-sm"></div>Holiday (Off)</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-green-100 border border-green-200 rounded-sm"></div>Worked WE/Holiday</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-slate-200 rounded-sm border border-slate-300"></div>Weekend</span>
+          <div className="flex items-center gap-4">
+            <div>
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
+                {resource.firstName} {resource.lastName}
+                {/* Country Select - Disabled in ReadOnly */}
+                <select 
+                    value={resource.country}
+                    disabled={isReadOnly}
+                    onChange={(e) => onUpdateResource(resource.id, { country: e.target.value as Country })}
+                    className={`text-sm font-normal bg-slate-100 pl-2 pr-8 py-1 rounded text-slate-600 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500 ${isReadOnly ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}`}
+                >
+                    {Object.values(Country).map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                </h2>
+                <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                    <CalendarRange className="w-3 h-3" />
+                    <span>Contract: {formatDateDisplay(resource.startDate)} to {formatDateDisplay(resource.endDate)}</span>
+                </div>
             </div>
 
-            <div 
+             {/* MOVED: Stats Badge next to user info */}
+             <div 
                 onDoubleClick={toggleStatsMode}
                 className={`
-                    flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all cursor-pointer select-none
+                    flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all cursor-pointer select-none ml-4
                     ${statsMode === 'days' 
                         ? 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100' 
                         : 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
@@ -209,82 +205,105 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                         <span className="text-sm font-bold">{formatCurrency(yearlyCost)}</span>
                     </>
                 )}
-                <span className="text-xs opacity-75 ml-1">in {selectedYear}</span>
+                {/* ADDED: "in 2026" inside the badge */}
+                <span className="text-sm font-normal opacity-75 ml-1">in {selectedYear}</span>
             </div>
 
-            <button 
-                onClick={handleLoadHolidays}
-                disabled={isLoadingHolidays}
-                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title={`Load standard holidays for ${resource.country} in ${selectedYear}`}
-            >
-                {isLoadingHolidays ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                {isLoadingHolidays ? 'Loading...' : 'Load Holidays'}
-            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-6">
+           <div className="flex items-center gap-3 text-xs font-medium text-slate-500 border-r border-slate-200 pr-6">
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-slate-200 rounded-sm"></div>Work</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-amber-100 border border-amber-200 rounded-sm"></div>Half</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-100 border border-red-200 rounded-sm"></div>Leave</span>
+                 <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-purple-100 border border-purple-200 rounded-sm"></div>Holiday (Off)</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-green-100 border border-green-200 rounded-sm"></div>Worked WE/Holiday</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-slate-200 rounded-sm border border-slate-300"></div>Weekend</span>
+            </div>
+
+            {/* Load Holidays - Hidden in ReadOnly */}
+            {!isReadOnly && (
+                <button 
+                    onClick={handleLoadHolidays}
+                    disabled={isLoadingHolidays}
+                    className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={`Load standard holidays for ${resource.country} in ${selectedYear}`}
+                >
+                    {isLoadingHolidays ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    {isLoadingHolidays ? 'Loading...' : 'Load Holidays'}
+                </button>
+            )}
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar: Mass Update */}
-        <div className="w-72 bg-white border-r border-slate-200 p-6 flex flex-col gap-6 overflow-y-auto shrink-0 z-10">
-          <div>
-            <h3 className="font-semibold text-slate-800 flex items-center gap-2 mb-4">
-              <Layers className="w-4 h-4 text-brand-600" />
-              Mass Update
-            </h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Select a date range to apply a presence rate to multiple days at once.
-            </p>
-            <form onSubmit={handleBulkApply} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Start Date</label>
-                <input 
-                  type="date" 
-                  required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none"
-                  value={bulkStart}
-                  onChange={handleStartDateChange}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">End Date</label>
-                <input 
-                  type="date" 
-                  required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none"
-                  value={bulkEnd}
-                  onChange={(e) => setBulkEnd(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Value To Apply</label>
-                <select 
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none bg-white"
-                  value={bulkValue}
-                  onChange={(e) => setBulkValue(e.target.value)}
+        {/* Sidebar: Mass Update - Hidden or Disabled in ReadOnly */}
+        {isReadOnly ? (
+             <div className="w-72 bg-slate-50 border-r border-slate-200 p-6 flex flex-col items-center justify-center text-center text-slate-400 shrink-0 z-10">
+                <Lock className="w-8 h-8 mb-3 text-slate-300" />
+                <h4 className="font-medium text-slate-500">Mass Update Locked</h4>
+                <p className="text-xs mt-1">Read-only mode active.</p>
+             </div>
+        ) : (
+            <div className="w-72 bg-white border-r border-slate-200 p-6 flex flex-col gap-6 overflow-y-auto shrink-0 z-10">
+            <div>
+                <h3 className="font-semibold text-slate-800 flex items-center gap-2 mb-4">
+                <Layers className="w-4 h-4 text-brand-600" />
+                Mass Update
+                </h3>
+                <p className="text-xs text-slate-500 mb-4">
+                Select a date range to apply a presence rate to multiple days at once.
+                </p>
+                <form onSubmit={handleBulkApply} className="space-y-4">
+                <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Start Date</label>
+                    <input 
+                    type="date" 
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                    value={bulkStart}
+                    onChange={handleStartDateChange}
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">End Date</label>
+                    <input 
+                    type="date" 
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                    value={bulkEnd}
+                    onChange={(e) => setBulkEnd(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Value To Apply</label>
+                    <select 
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none bg-white"
+                    value={bulkValue}
+                    onChange={(e) => setBulkValue(e.target.value)}
+                    >
+                    <option value="0">0% (Off / Leave)</option>
+                    <option value="0.5">50% (Half Day)</option>
+                    <option value="1">100% (Working Day)</option>
+                    <option value="default">Reset to Standard</option>
+                    </select>
+                </div>
+                <button 
+                    type="submit"
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-colors mt-2"
                 >
-                  <option value="0">0% (Off / Leave)</option>
-                  <option value="0.5">50% (Half Day)</option>
-                  <option value="1">100% (Working Day)</option>
-                  <option value="default">Reset to Standard</option>
-                </select>
-              </div>
-              <button 
-                type="submit"
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-colors mt-2"
-              >
-                <Check className="w-4 h-4" /> Apply Changes
-              </button>
-            </form>
-          </div>
-        </div>
+                    <Check className="w-4 h-4" /> Apply Changes
+                </button>
+                </form>
+            </div>
+            </div>
+        )}
 
         {/* Main Content: Linear Calendar Grid */}
         <div className="flex-1 overflow-auto bg-white p-6 relative">
-             <div className="flex items-center justify-center gap-4 mb-6 sticky left-0">
-                <span className="text-xl font-bold text-slate-800">{selectedYear}</span>
-            </div>
-
+             {/* REMOVED: Big Year Header above grid */}
+             
             <div className="w-full">
                 {/* 
                    GRID DEFINITION: 
@@ -389,11 +408,12 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                                             key={dayIndex}
                                             onClick={() => handleDayClick(currentDate)}
                                             className={`
-                                                relative h-10 border-white hover:z-10 hover:ring-2 hover:ring-blue-500 transition-all
-                                                flex items-center justify-center group
+                                                relative h-10 border-white transition-all flex items-center justify-center group
+                                                ${!isReadOnly ? 'hover:z-10 hover:ring-2 hover:ring-blue-500' : 'cursor-default'}
                                                 ${bgClass}
                                             `}
                                             title={`${formatDateDisplay(format(currentDate, 'yyyy-MM-dd'))}: ${val * 100}% ${isHoliday ? '(Holiday)' : ''}`}
+                                            disabled={isReadOnly}
                                         >
                                             <span className={`text-[10px] font-bold ${isWknd || val === 0 ? 'text-slate-500' : 'text-slate-700'}`}>
                                                 {val === 0.5 ? '½' : ''}

@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Calculator, History, LogOut, Wallet, FileClock, ShieldAlert, Loader } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator, LogOut, Wallet, FileClock, ShieldAlert, Loader, RefreshCw, FolderPlus, Settings, Lock } from 'lucide-react'; // Added Lock icon
 import { APP_NAME, AUTHORIZED_USERS } from './constants';
 import BudgetView from './BudgetView';
-import HistoryView from './HistoryView';
 import SimulationView from './SimulationView';
 import ResourcesView from './ResourcesView';
 import DashboardView from './DashboardView';
+import SettingsView from './SettingsView';
 import { useAppLogic } from './hooks/useAppLogic';
 import { auth, googleProvider } from './services/firebase';
 import { signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 import { User } from "firebase/auth";
+import { ScenarioStatus } from './types'; // Import ScenarioStatus
 
 function App() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'budget' | 'resources' | 'simulation' | 'history'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'budget' | 'resources' | 'simulation' | 'settings'>('dashboard');
   const [user, setUser] = useState<User | null>(null);
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
 
   const { 
     scenario, 
+    versions,
     isLoading,
     addEnvelope, 
     updateEnvelope, 
@@ -30,7 +32,9 @@ function App() {
     deleteResource,
     createSnapshot,
     restoreSnapshot,
-    publishScenario
+    publishScenario,
+    resetAllData,
+    initializeProject
   } = useAppLogic(user);
 
   useEffect(() => {
@@ -60,6 +64,19 @@ function App() {
       console.error("Error signing out", error);
     }
   };
+
+  const handleReset = () => {
+      if (window.confirm("WARNING: This will delete ALL scenarios and reset the database to a clean state. Are you sure?")) {
+          resetAllData();
+      }
+  };
+  
+  const handleInitialize = () => {
+      initializeProject();
+  };
+
+  // Determine ReadOnly State
+  const isReadOnly = scenario && scenario.status !== ScenarioStatus.DRAFT;
 
   // --- RENDER LOGIC ---
 
@@ -109,9 +126,10 @@ function App() {
     );
   }
 
+  // --- LOADING STATE ---
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center gap-6">
         <div className="flex items-center gap-3 text-lg text-slate-600">
           <Loader className="w-6 h-6 animate-spin" />
           <span>Loading data...</span>
@@ -120,6 +138,41 @@ function App() {
     );
   }
 
+  // --- NO SCENARIO FOUND (EMPTY STATE) ---
+  if (!scenario) {
+      return (
+        <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4">
+            <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
+                <div className="mb-6 flex justify-center">
+                    <div className="bg-blue-100 p-3 rounded-full">
+                    <FolderPlus className="w-8 h-8 text-blue-600" />
+                    </div>
+                </div>
+                <h1 className="text-2xl font-bold text-slate-800 mb-2">Welcome</h1>
+                <p className="text-slate-500 mb-8">
+                    No budget scenario found. <br/>
+                    Initialize the project to start working.
+                </p>
+                <div className="flex flex-col gap-3">
+                    <button 
+                        onClick={handleInitialize}
+                        className="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                    >
+                        Initialize Project
+                    </button>
+                    <button 
+                        onClick={handleReset}
+                        className="w-full text-slate-500 hover:text-red-600 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                    >
+                        Hard Reset (Clean Database)
+                    </button>
+                </div>
+            </div>
+        </div>
+      );
+  }
+
+  // --- MAIN APP UI ---
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar */}
@@ -134,15 +187,25 @@ function App() {
           <button onClick={() => setCurrentView('budget')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentView === 'budget' ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'}`}><Wallet className="w-5 h-5" /><span>Budget</span></button>
           <button onClick={() => setCurrentView('resources')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentView === 'resources' ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'}`}><Users className="w-5 h-5" /><span>Resources</span></button>
           <button onClick={() => setCurrentView('simulation')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentView === 'simulation' ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'}`}><FileClock className="w-5 h-5" /><span>Versions & Publish</span></button>
-          <button onClick={() => setCurrentView('history')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentView === 'history' ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'}`}><History className="w-5 h-5" /><span>History (Logs)</span></button>
         </nav>
 
-        <div className="p-4 border-t border-slate-800">
-           <div className="flex items-center gap-3 mb-4 px-2">
+        <div className="p-4 border-t border-slate-800 space-y-2">
+            {/* SETTINGS BUTTON */}
+          <button 
+            onClick={() => setCurrentView('settings')}
+            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-sm mb-2 ${currentView === 'settings' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>Settings & Diagnostics</span>
+          </button>
+
+           <div className="flex items-center gap-3 mb-4 px-2 pt-2 border-t border-slate-800">
             {user.photoURL && <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full" />}
             <div className="text-sm">
               <p className="text-white font-medium">{user.displayName}</p>
-              <p className="text-xs text-slate-500">Admin</p>
+              <div className="flex items-center gap-1">
+                 <p className="text-xs text-slate-500">Admin</p>
+              </div>
             </div>
           </div>
           <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors"><LogOut className="w-4 h-4" />Sign Out</button>
@@ -151,19 +214,35 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto relative flex flex-col">
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-10 px-8 py-4 flex justify-between items-center shrink-0">
-          <h2 className="text-xl font-semibold text-slate-800 capitalize">{currentView === 'simulation' ? 'Versions & Publish' : currentView}</h2>
-          <div className="flex items-center gap-4">
-            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${scenario.status === 'MASTER' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{scenario.name} ({scenario.status})</span>
-          </div>
+        {/* Header with dynamic styling for ReadOnly */}
+        <header 
+            className={`
+                border-b border-slate-200 sticky top-0 z-10 px-8 py-4 flex justify-between items-center shrink-0 transition-colors
+                ${isReadOnly && currentView !== 'settings' ? 'bg-amber-50 border-amber-100' : 'bg-white'}
+            `}
+        >
+            <div className="flex items-center gap-3">
+                <h2 className={`text-xl font-semibold capitalize flex items-center gap-2 ${isReadOnly && currentView !== 'settings' ? 'text-amber-900' : 'text-slate-800'}`}>
+                    {currentView === 'simulation' ? 'Versions & Publish' : currentView}
+                    {isReadOnly && currentView !== 'settings' && (
+                        <Lock className="w-5 h-5 text-amber-600 opacity-75" />
+                    )}
+                </h2>
+            </div>
+          
+          {currentView !== 'settings' && (
+              <div className="flex items-center gap-4">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${scenario.status === 'MASTER' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{scenario.name} ({scenario.status})</span>
+              </div>
+          )}
         </header>
 
         <div className="flex-1 h-full w-full">
           {currentView === 'dashboard' && (<div className="max-w-[1920px] mx-auto w-full"><DashboardView envelopes={scenario.envelopes} resources={scenario.resources} /></div>)}
-          {currentView === 'budget' && (<div className="max-w-7xl mx-auto w-full"><BudgetView envelopes={scenario.envelopes} onAdd={addEnvelope} onUpdate={updateEnvelope} onDelete={deleteEnvelope} /></div>)}
-          {currentView === 'resources' && (<ResourcesView resources={scenario.resources} onAdd={addResource} onUpdate={updateResource} onDelete={deleteResource} onUpdateOverride={updateResourceOverride} onBulkUpdateOverride={bulkUpdateResourceOverrides} onApplyHolidays={applyResourceHolidays} />)}
-          {currentView === 'simulation' && (<div className="max-w-7xl mx-auto w-full"><SimulationView scenario={scenario} onCreateSnapshot={createSnapshot} onRestoreSnapshot={restoreSnapshot} onPublish={publishScenario} /></div>)}
-          {currentView === 'history' && (<div className="max-w-7xl mx-auto w-full"><HistoryView logs={scenario.auditLogs} /></div>)}
+          {currentView === 'budget' && (<div className="max-w-7xl mx-auto w-full"><BudgetView envelopes={scenario.envelopes} onAdd={addEnvelope} onUpdate={updateEnvelope} onDelete={deleteEnvelope} isReadOnly={isReadOnly} /></div>)}
+          {currentView === 'resources' && (<ResourcesView resources={scenario.resources} onAdd={addResource} onUpdate={updateResource} onDelete={deleteResource} onUpdateOverride={updateResourceOverride} onBulkUpdateOverride={bulkUpdateResourceOverrides} onApplyHolidays={applyResourceHolidays} isReadOnly={isReadOnly} />)}
+          {currentView === 'simulation' && (<div className="max-w-7xl mx-auto w-full"><SimulationView scenario={scenario} versions={versions} onCreateSnapshot={createSnapshot} onRestoreSnapshot={restoreSnapshot} onPublish={publishScenario} /></div>)}
+          {currentView === 'settings' && (<SettingsView user={user} onResetData={handleReset} />)}
         </div>
       </main>
     </div>

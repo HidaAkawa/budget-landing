@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Trash2, PieChart, TrendingUp, ShieldCheck, Edit2, X, Check } from 'lucide-react';
+import { Plus, Trash2, PieChart, TrendingUp, ShieldCheck, Edit2, X, Check, Lock } from 'lucide-react';
 import { BudgetEnvelope, EnvelopeType } from './types';
 
 // Utils
@@ -11,9 +11,10 @@ interface BudgetViewProps {
   onAdd: (env: BudgetEnvelope) => void;
   onUpdate: (id: string, env: Partial<BudgetEnvelope>) => void;
   onDelete: (id: string) => void;
+  isReadOnly?: boolean; // New prop
 }
 
-export default function BudgetView({ envelopes, onAdd, onUpdate, onDelete }: BudgetViewProps) {
+export default function BudgetView({ envelopes, onAdd, onUpdate, onDelete, isReadOnly = false }: BudgetViewProps) {
   
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -23,6 +24,7 @@ export default function BudgetView({ envelopes, onAdd, onUpdate, onDelete }: Bud
 
   // When clicking edit, populate form
   const handleEditClick = (env: BudgetEnvelope) => {
+    if (isReadOnly) return;
     setEditingId(env.id);
     setName(env.name);
     setType(env.type);
@@ -38,6 +40,7 @@ export default function BudgetView({ envelopes, onAdd, onUpdate, onDelete }: Bud
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
     if (!name || !amount) return;
 
     const numericAmount = parseFloat(amount);
@@ -121,7 +124,7 @@ export default function BudgetView({ envelopes, onAdd, onUpdate, onDelete }: Bud
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Envelopes List */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+        <div className={`${isReadOnly ? 'lg:col-span-3' : 'lg:col-span-2'} bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col`}>
           <div className="p-5 border-b border-slate-100 flex justify-between items-center">
             <h3 className="font-semibold text-slate-800">Envelopes Definition</h3>
             <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium">{envelopes.length} items</span>
@@ -133,7 +136,7 @@ export default function BudgetView({ envelopes, onAdd, onUpdate, onDelete }: Bud
                   <th className="px-6 py-4">Name</th>
                   <th className="px-6 py-4">Type</th>
                   <th className="px-6 py-4 text-right">Amount</th>
-                  <th className="px-6 py-4 text-center">Actions</th>
+                  {!isReadOnly && <th className="px-6 py-4 text-center">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -152,24 +155,26 @@ export default function BudgetView({ envelopes, onAdd, onUpdate, onDelete }: Bud
                     <td className="px-6 py-4 text-right font-mono text-slate-600">
                       {formatCurrency(env.amount)}
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => handleEditClick(env)}
-                          className="text-slate-400 hover:text-blue-600 p-1"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => onDelete(env.id)}
-                          className="text-slate-400 hover:text-red-500 p-1"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {!isReadOnly && (
+                        <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                            onClick={() => handleEditClick(env)}
+                            className="text-slate-400 hover:text-blue-600 p-1"
+                            title="Edit"
+                            >
+                            <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                            onClick={() => onDelete(env.id)}
+                            className="text-slate-400 hover:text-red-500 p-1"
+                            title="Delete"
+                            >
+                            <Trash2 className="w-4 h-4" />
+                            </button>
+                        </div>
+                        </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -177,101 +182,111 @@ export default function BudgetView({ envelopes, onAdd, onUpdate, onDelete }: Bud
           </div>
         </div>
 
-        {/* Add/Edit Envelope Form */}
-        <div className={`bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-fit transition-all ${editingId ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}>
-          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            {editingId ? (
-              <>
-                <Edit2 className="w-4 h-4 text-blue-600" />
-                Edit Envelope
-              </>
-            ) : (
-              <>
-                <Plus className="w-4 h-4 text-brand-600" />
-                Add New Envelope
-              </>
-            )}
-          </h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Envelope Name</label>
-              <input 
-                type="text" 
-                required
-                placeholder="e.g. Cyber Security"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none text-sm transition-shadow"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setType(EnvelopeType.RUN)}
-                  className={`flex items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-all ${
-                    type === EnvelopeType.RUN
-                      ? 'bg-orange-50 border-orange-200 text-orange-700 ring-1 ring-orange-300'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  RUN
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setType(EnvelopeType.CHANGE)}
-                  className={`flex items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-all ${
-                    type === EnvelopeType.CHANGE
-                      ? 'bg-purple-50 border-purple-200 text-purple-700 ring-1 ring-purple-300'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  CHANGE
-                </button>
-              </div>
-            </div>
+        {/* Add/Edit Envelope Form - HIDDEN IN READONLY */}
+        {!isReadOnly && (
+            <div className={`bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-fit transition-all ${editingId ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}>
+            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                {editingId ? (
+                <>
+                    <Edit2 className="w-4 h-4 text-blue-600" />
+                    Edit Envelope
+                </>
+                ) : (
+                <>
+                    <Plus className="w-4 h-4 text-brand-600" />
+                    Add New Envelope
+                </>
+                )}
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Envelope Name</label>
+                <input 
+                    type="text" 
+                    required
+                    placeholder="e.g. Cyber Security"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none text-sm transition-shadow"
+                />
+                </div>
+                
+                <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                    type="button"
+                    onClick={() => setType(EnvelopeType.RUN)}
+                    className={`flex items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-all ${
+                        type === EnvelopeType.RUN
+                        ? 'bg-orange-50 border-orange-200 text-orange-700 ring-1 ring-orange-300'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                    >
+                    RUN
+                    </button>
+                    <button
+                    type="button"
+                    onClick={() => setType(EnvelopeType.CHANGE)}
+                    className={`flex items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-all ${
+                        type === EnvelopeType.CHANGE
+                        ? 'bg-purple-50 border-purple-200 text-purple-700 ring-1 ring-purple-300'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                    >
+                    CHANGE
+                    </button>
+                </div>
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Amount (€)</label>
-              <input 
-                type="number" 
-                required
-                min="0"
-                step="1000"
-                placeholder="0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none text-sm transition-shadow font-mono"
-              />
-            </div>
+                <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Amount (€)</label>
+                <input 
+                    type="number" 
+                    required
+                    min="0"
+                    step="1000"
+                    placeholder="0"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none text-sm transition-shadow font-mono"
+                />
+                </div>
 
-            <div className="flex gap-2 mt-2">
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm"
+                <div className="flex gap-2 mt-2">
+                {editingId && (
+                    <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm"
+                    >
+                    <X className="w-4 h-4" />
+                    Cancel
+                    </button>
+                )}
+                <button 
+                    type="submit"
+                    className={`flex-1 font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm ${
+                    editingId 
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                    : 'bg-slate-900 hover:bg-slate-800 text-white'
+                    }`}
                 >
-                  <X className="w-4 h-4" />
-                  Cancel
+                    {editingId ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    {editingId ? 'Update' : 'Add to Budget'}
                 </button>
-              )}
-              <button 
-                type="submit"
-                className={`flex-1 font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm ${
-                  editingId 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                  : 'bg-slate-900 hover:bg-slate-800 text-white'
-                }`}
-              >
-                {editingId ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                {editingId ? 'Update' : 'Add to Budget'}
-              </button>
+                </div>
+            </form>
             </div>
-          </form>
-        </div>
+        )}
+
+        {isReadOnly && (
+            <div className="bg-slate-50 rounded-xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center text-slate-400">
+                <Lock className="w-12 h-12 mb-3 text-slate-300" />
+                <h3 className="font-medium text-slate-600">Modification Verrouillée</h3>
+                <p className="text-sm mt-1 max-w-xs">Vous consultez une version archivée ou publiée (MASTER). Passez sur un DRAFT pour éditer.</p>
+            </div>
+        )}
       </div>
     </div>
   );

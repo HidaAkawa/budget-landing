@@ -1,280 +1,309 @@
-import { useState, useEffect } from 'react';
-import { BudgetEnvelope, EnvelopeType, Scenario, ScenarioStatus, AuditLog, ScenarioSnapshot, Resource, OverrideValue } from '../types';
+import { useState, useEffect, useMemo } from 'react';
+import { BudgetEnvelope, Scenario, ScenarioStatus, Resource, OverrideValue } from '../types';
 import { eachDayOfInterval, format } from 'date-fns';
 import { User } from 'firebase/auth';
 import { db } from '../services/firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { 
+    collection, 
+    doc, 
+    onSnapshot, 
+    query, 
+    where, 
+    addDoc, 
+    updateDoc,
+    writeBatch,
+    getDocs,
+    deleteDoc
+} from 'firebase/firestore';
 
-const INITIAL_SCENARIO: Scenario = {
-    id: 'sc-1',
-    name: 'Budget IT 2026',
+// EMPTY INITIAL DATA
+const INITIAL_SCENARIO_DATA: Omit<Scenario, 'id'> = {
+    name: 'Draft Initial',
     status: ScenarioStatus.DRAFT,
-    envelopes: [
-        { id: '1', name: 'Maintenance Application', type: EnvelopeType.RUN, amount: 1200000 },
-        { id: '2', name: 'Projet Migration Cloud', type: EnvelopeType.CHANGE, amount: 850000 },
-        { id: '3', name: 'Support N3', type: EnvelopeType.RUN, amount: 400000 },
-        { id: '4', name: 'Nouvelle Feature IA', type: EnvelopeType.CHANGE, amount: 300000 },
-    ],
-    resources: [],
-    auditLogs: [],
-    snapshots: [],
+    envelopes: [], 
+    resources: [], 
     createdAt: Date.now(),
     updatedAt: Date.now(),
 };
 
-const SCENARIO_DOC_ID = "shared-scenario-v1";
-
 export function useAppLogic(user: User | null) {
-  const [scenario, setScenario] = useState<Scenario>(INITIAL_SCENARIO);
+  const [versions, setVersions] = useState<Scenario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
 
-  // --- Firestore Real-time Sync ---
+  const scenario = useMemo(() => {
+      if (!activeScenarioId || versions.length === 0) return null;
+      return versions.find(v => v.id === activeScenarioId) || null;
+  }, [activeScenarioId, versions]);
+
+  // LOAD STRATEGY
   useEffect(() => {
     if (!user) {
-        setScenario(INITIAL_SCENARIO);
+        setVersions([]);
         setIsLoading(false);
         return;
     }
 
     setIsLoading(true);
-    const scenarioRef = doc(db, "scenarios", SCENARIO_DOC_ID);
 
-    const unsubscribe = onSnapshot(scenarioRef, async (docSnap) => {
-        if (docSnap.exists()) {
-            setScenario(docSnap.data() as Scenario);
-            setIsLoading(false);
-        } else {
-            // The document doesn't exist, so we create it.
-            // The listener will automatically pick up the new state.
-            try {
-                await setDoc(scenarioRef, INITIAL_SCENARIO);
-            } catch (error) {
-                console.error("Error creating initial scenario:", error);
-                setIsLoading(false); // Stop loading on error
-            }
-        }
-    }, (error) => {
-        console.error("Error listening to scenario changes:", error);
+    const q = query(
+        collection(db, "scenarios"), 
+        where("ownerId", "==", user.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const loadedDocs = snapshot.docs.map(d => ({id: d.id, ...d.data()} as Scenario));
+        // Sort: Drafts first, then by date desc
+        loadedDocs.sort((a, b) => {
+            if (a.status === ScenarioStatus.DRAFT && b.status !== ScenarioStatus.DRAFT) return -1;
+            if (a.status !== ScenarioStatus.DRAFT && b.status === ScenarioStatus.DRAFT) return 1;
+            return (b.updatedAt || 0) - (a.updatedAt || 0);
+        });
+        
+        setVersions(loadedDocs);
+        setIsLoading(false);
+    }, (err) => {
+        console.error("Error loading scenarios:", err);
         setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, [user]);
 
-  // --- Internal Helper to Update DB ---
-  const updateScenarioInDb = async (updatedScenario: Scenario) => {
-    const scenarioRef = doc(db, "scenarios", SCENARIO_DOC_ID);
-    try {
-        await setDoc(scenarioRef, updatedScenario, { merge: true });
-    } catch (error) {
-        console.error("Error updating scenario in DB:", error);
-    }
-  };
-  
-  const logAction = (action: string, details: string, entityType: AuditLog['entityType'], entityId?: string) => {
-    const newLog: AuditLog = {
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: Date.now(),
-      user: user ? `${user.displayName} (${user.email})` : 'System',
-      action,
-      details,
-      entityType,
-      entityId
-    };
-    return newLog;
+  // Auto-Select Logic
+  useEffect(() => {
+      if (!isLoading && versions.length > 0 && !activeScenarioId) {
+          // Priority 1: The most recent DRAFT
+          const draft = versions.find(v => v.status === ScenarioStatus.DRAFT);
+          if (draft) {
+              setActiveScenarioId(draft.id);
+          } else {
+              // Priority 2: The current MASTER
+              const master = versions.find(v => v.status === ScenarioStatus.MASTER);
+              if (master) {
+                   setActiveScenarioId(master.id);
+              } else {
+                  // Fallback
+                  setActiveScenarioId(versions[0].id);
+              }
+          }
+      }
+  }, [isLoading, versions, activeScenarioId]);
+
+
+  const initializeProject = async () => {
+      if(!user) return;
+      setIsLoading(true);
+      try {
+        const docRef = await addDoc(collection(db, "scenarios"), {
+            ...INITIAL_SCENARIO_DATA,
+            ownerId: user.uid,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        });
+        setActiveScenarioId(docRef.id);
+      } catch(e) {
+          console.error("Init failed", e);
+          alert("Initialization failed. Check console.");
+      } finally {
+          setIsLoading(false);
+      }
   };
 
-  // --- Envelope Management ---
+  const resetAllData = async () => {
+      if (!user) return;
+      setIsLoading(true);
+      try {
+          const q = query(collection(db, "scenarios"), where("ownerId", "==", user.uid));
+          const querySnapshot = await getDocs(q);
+          const deletePromises = querySnapshot.docs.map(d => deleteDoc(d.ref));
+          await Promise.all(deletePromises);
+          
+          setActiveScenarioId(null);
+          await initializeProject();
+          alert("Your data has been reset.");
+      } catch (err) {
+          console.error("Reset failed:", err);
+      } finally {
+          setIsLoading(false);
+      }
+  };
+
+  // --- ACTIONS WITH SAFEGUARDS ---
+
+  const checkMutationAllowed = (): boolean => {
+      if (!scenario) return false;
+      if (scenario.status !== ScenarioStatus.DRAFT) {
+          console.warn("Attempted to modify a non-DRAFT scenario.");
+          return false;
+      }
+      return true;
+  };
+
+  const updateScenarioFields = async (updates: Partial<Scenario>) => {
+    if (!activeScenarioId) return;
+    const docRef = doc(db, "scenarios", activeScenarioId);
+    try {
+        await updateDoc(docRef, { ...updates, updatedAt: Date.now() });
+    } catch (err) {
+        console.error("Update failed:", err);
+    }
+  };
+
   const addEnvelope = (envelope: BudgetEnvelope) => {
-    const updatedScenario = {
-      ...scenario,
-      envelopes: [...scenario.envelopes, envelope],
-      auditLogs: [logAction('CREATE', `Created envelope "${envelope.name}"`, 'ENVELOPE', envelope.id), ...scenario.auditLogs],
-      updatedAt: Date.now(),
-    };
-    updateScenarioInDb(updatedScenario);
+    if (!checkMutationAllowed() || !scenario) return;
+    updateScenarioFields({ envelopes: [...scenario.envelopes, envelope] });
   };
 
   const updateEnvelope = (id: string, updates: Partial<BudgetEnvelope>) => {
-    const oldEnv = scenario.envelopes.find(e => e.id === id);
-    if (!oldEnv) return;
-
-    const newEnv = { ...oldEnv, ...updates };
-    const changes = Object.keys(updates).map(key => `${key}: ${oldEnv[key as keyof BudgetEnvelope]} -> ${updates[key as keyof Partial<BudgetEnvelope>]}`).join(', ');
-    
-    const updatedScenario = {
-        ...scenario,
-        envelopes: scenario.envelopes.map(e => e.id === id ? newEnv : e),
-        auditLogs: [logAction('UPDATE', `Updated envelope "${newEnv.name}": ${changes}`, 'ENVELOPE', id), ...scenario.auditLogs],
-        updatedAt: Date.now(),
-    };
-    updateScenarioInDb(updatedScenario);
+    if (!checkMutationAllowed() || !scenario) return;
+    updateScenarioFields({ envelopes: scenario.envelopes.map(e => e.id === id ? { ...e, ...updates } : e) });
   };
 
   const deleteEnvelope = (id: string) => {
-    const env = scenario.envelopes.find(e => e.id === id);
-    const updatedScenario = {
-        ...scenario,
-        envelopes: scenario.envelopes.filter(e => e.id !== id),
-        auditLogs: [logAction('DELETE', `Deleted envelope "${env?.name}"`, 'ENVELOPE', id), ...scenario.auditLogs],
-        updatedAt: Date.now(),
-    };
-    updateScenarioInDb(updatedScenario);
+    if (!checkMutationAllowed() || !scenario) return;
+    updateScenarioFields({ envelopes: scenario.envelopes.filter(e => e.id !== id) });
   };
 
-  // --- Resource Management ---
   const addResource = (resource: Resource) => {
-    const updatedScenario = {
-        ...scenario,
-        resources: [...scenario.resources, resource],
-        auditLogs: [logAction('CREATE', `Created resource "${resource.firstName}"`, 'RESOURCE', resource.id), ...scenario.auditLogs],
-        updatedAt: Date.now(),
-    };
-    updateScenarioInDb(updatedScenario);
+    if (!checkMutationAllowed() || !scenario) return;
+    updateScenarioFields({ resources: [...scenario.resources, resource] });
   };
 
   const updateResource = (id: string, updates: Partial<Resource>) => {
-    const oldRes = scenario.resources.find(r => r.id === id);
-    if (!oldRes) return;
-
-    const newRes = { ...oldRes, ...updates };
-    const changes = Object.keys(updates).map(key => `${key}: ${oldRes[key as keyof Resource]} -> ${updates[key as keyof Partial<Resource>]}`).join(', ');
-
-    const updatedScenario = {
-        ...scenario,
-        resources: scenario.resources.map(r => r.id === id ? newRes : r),
-        auditLogs: [logAction('UPDATE', `Updated resource "${newRes.firstName}": ${changes}`, 'RESOURCE', id), ...scenario.auditLogs],
-        updatedAt: Date.now(),
-    };
-    updateScenarioInDb(updatedScenario);
+    if (!checkMutationAllowed() || !scenario) return;
+    updateScenarioFields({ resources: scenario.resources.map(r => r.id === id ? { ...r, ...updates } : r) });
   };
 
   const updateResourceOverride = (resourceId: string, date: string, value: OverrideValue | undefined) => {
+    if (!checkMutationAllowed() || !scenario) return;
     const res = scenario.resources.find(r => r.id === resourceId);
     if (!res) return;
-
     const newOverrides = { ...res.overrides };
-    if (value === undefined) {
-      delete newOverrides[date];
-    } else {
-      newOverrides[date] = value;
-    }
-
-    const updatedResources = scenario.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides } : r);
-    const updatedScenario = {
-        ...scenario,
-        resources: updatedResources,
-        auditLogs: [logAction('UPDATE', `Override for ${res.firstName} on ${date} to ${value}`, 'RESOURCE', resourceId), ...scenario.auditLogs],
-        updatedAt: Date.now(),
-    };
-    updateScenarioInDb(updatedScenario);
+    if (value === undefined) delete newOverrides[date]; else newOverrides[date] = value;
+    updateScenarioFields({ resources: scenario.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides } : r) });
   };
 
   const bulkUpdateResourceOverrides = (resourceId: string, startDate: Date, endDate: Date, value: OverrideValue | undefined) => {
+    if (!checkMutationAllowed() || !scenario) return;
     const res = scenario.resources.find(r => r.id === resourceId);
     if (!res) return;
-
     const newOverrides = { ...res.overrides };
-    const days = eachDayOfInterval({ start: startDate, end: endDate });
-    days.forEach(day => {
+    eachDayOfInterval({ start: startDate, end: endDate }).forEach(day => {
         const dateStr = format(day, 'yyyy-MM-dd');
-        if (value === undefined) {
-            delete newOverrides[dateStr];
-        } else {
-            newOverrides[dateStr] = value;
-        }
+        if (value === undefined) delete newOverrides[dateStr]; else newOverrides[dateStr] = value;
     });
-
-    const updatedResources = scenario.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides } : r);
-    const updatedScenario = {
-        ...scenario,
-        resources: updatedResources,
-        auditLogs: [logAction('UPDATE', `Bulk override for ${res.firstName} from ${format(startDate, 'yyyy-MM-dd')} to ${format(endDate, 'yyyy-MM-dd')}`, 'RESOURCE', resourceId), ...scenario.auditLogs],
-        updatedAt: Date.now(),
-    };
-    updateScenarioInDb(updatedScenario);
+    updateScenarioFields({ resources: scenario.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides } : r) });
   };
 
   const applyResourceHolidays = (resourceId: string, year: number, externalHolidays: string[]) => {
+    if (!checkMutationAllowed() || !scenario) return;
     const res = scenario.resources.find(r => r.id === resourceId);
     if (!res) return;
-
     const newOverrides = { ...res.overrides };
-    externalHolidays.forEach(dateStr => {
-        newOverrides[dateStr] = 0;
-    });
-
+    externalHolidays.forEach(d => newOverrides[d] = 0);
     const newDynamicHolidays = [...new Set([...(res.dynamicHolidays || []), ...externalHolidays])];
-    const updatedResources = scenario.resources.map(r => 
-        r.id === resourceId 
-        ? { ...r, overrides: newOverrides, dynamicHolidays: newDynamicHolidays } 
-        : r
-    );
-
-    const updatedScenario = {
-        ...scenario,
-        resources: updatedResources,
-        auditLogs: [logAction('UPDATE', `Applied ${externalHolidays.length} holidays for ${res.firstName}`, 'RESOURCE', resourceId), ...scenario.auditLogs],
-        updatedAt: Date.now(),
-    };
-    updateScenarioInDb(updatedScenario);
+    updateScenarioFields({ 
+        resources: scenario.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides, dynamicHolidays: newDynamicHolidays } : r) 
+    });
   };
 
   const deleteResource = (id: string) => {
-    const res = scenario.resources.find(r => r.id === id);
-    const updatedScenario = {
-        ...scenario,
-        resources: scenario.resources.filter(r => r.id !== id),
-        auditLogs: [logAction('DELETE', `Deleted resource "${res?.firstName}"`, 'RESOURCE', id), ...scenario.auditLogs],
-        updatedAt: Date.now(),
-    };
-    updateScenarioInDb(updatedScenario);
+    if (!checkMutationAllowed() || !scenario) return;
+    updateScenarioFields({ resources: scenario.resources.filter(r => r.id !== id) });
   };
 
-  // --- Simulation / Versioning ---
-  const createSnapshot = (name: string) => {
-    const snapshot: ScenarioSnapshot = {
-      id: Math.random().toString(36).substr(2, 9),
-      name,
-      date: Date.now(),
-      envelopes: JSON.parse(JSON.stringify(scenario.envelopes)),
-      resources: JSON.parse(JSON.stringify(scenario.resources)),
+  const createSnapshot = async (name: string) => {
+    if (!scenario || !user) return;
+    // Standard snapshot logic (manual)
+    const newDraft: Omit<Scenario, 'id'> = {
+        name: name,
+        status: ScenarioStatus.DRAFT,
+        ownerId: user.uid,
+        parentId: scenario.id,
+        envelopes: scenario.envelopes,
+        resources: scenario.resources,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
     };
-    const updatedScenario = {
-        ...scenario,
-        snapshots: [snapshot, ...scenario.snapshots],
-        auditLogs: [logAction('SNAPSHOT', `Created snapshot "${name}"`, 'SCENARIO'), ...scenario.auditLogs],
-    };
-    updateScenarioInDb(updatedScenario);
+    try {
+        const docRef = await addDoc(collection(db, "scenarios"), newDraft);
+        setActiveScenarioId(docRef.id);
+    } catch (e) {
+        console.error("Error creating version:", e);
+    }
   };
 
   const restoreSnapshot = (snapshotId: string) => {
-    const snapshot = scenario.snapshots.find(s => s.id === snapshotId);
-    if (!snapshot) return;
-
-    const updatedScenario = {
-        ...scenario,
-        envelopes: JSON.parse(JSON.stringify(snapshot.envelopes)),
-        resources: JSON.parse(JSON.stringify(snapshot.resources)),
-        auditLogs: [logAction('RESTORE', `Restored snapshot "${snapshot.name}"`, 'SCENARIO'), ...scenario.auditLogs],
-        updatedAt: Date.now(),
-    };
-    updateScenarioInDb(updatedScenario);
+    setActiveScenarioId(snapshotId);
   };
 
-  const publishScenario = () => {
-    const updatedScenario = {
-        ...scenario,
-        status: ScenarioStatus.MASTER,
-        auditLogs: [logAction('PUBLISH', `Published scenario to MASTER`, 'SCENARIO'), ...scenario.auditLogs],
-        updatedAt: Date.now(),
-    };
-    updateScenarioInDb(updatedScenario);
+  // --- NEW PUBLISH LOGIC ---
+  const publishScenario = async () => {
+    if (!scenario || !user || scenario.status !== ScenarioStatus.DRAFT) return;
+
+    if (!window.confirm("Publier ce DRAFT comme MASTER ?\nCela archivera le MASTER actuel et ouvrira un nouveau DRAFT pour la suite.")) {
+        return;
+    }
+
+    try {
+        const batch = writeBatch(db);
+        const now = Date.now();
+
+        // 1. Archive current MASTERS
+        const currentMasters = versions.filter(v => v.status === ScenarioStatus.MASTER);
+        currentMasters.forEach(v => {
+            const ref = doc(db, "scenarios", v.id);
+            batch.update(ref, { 
+                status: ScenarioStatus.ARCHIVED,
+                updatedAt: now 
+            });
+        });
+
+        // 2. Promote current DRAFT to MASTER
+        const newMasterRef = doc(db, "scenarios", scenario.id);
+        batch.update(newMasterRef, { 
+            status: ScenarioStatus.MASTER, 
+            updatedAt: now 
+        });
+
+        // 3. Create NEW DRAFT immediately
+        const timestamp = format(new Date(), 'yyyyMMdd-HHmm');
+        const username = user.displayName?.split(' ')[0].toUpperCase() || 'USER';
+        const newDraftName = `${username}-${timestamp}`;
+
+        const newDraftRef = doc(collection(db, "scenarios"));
+        batch.set(newDraftRef, {
+            name: newDraftName,
+            status: ScenarioStatus.DRAFT,
+            ownerId: user.uid,
+            parentId: scenario.id, // Parent is the one we just published
+            envelopes: scenario.envelopes, // Clone data
+            resources: scenario.resources, // Clone data
+            createdAt: now,
+            updatedAt: now,
+        });
+
+        await batch.commit();
+
+        // 4. Switch to the NEW DRAFT
+        // We use a small timeout to let Firestore trigger the snapshot listener
+        setTimeout(() => {
+             setActiveScenarioId(newDraftRef.id);
+             alert(`Publication réussie !\n\n1. Version publiée en MASTER\n2. Nouveau DRAFT créé : ${newDraftName}`);
+        }, 500);
+
+    } catch (e) {
+        console.error("Publish failed:", e);
+        alert("Erreur lors de la publication. Vérifiez la console.");
+    }
   };
 
   return {
     scenario,
+    versions,
     isLoading,
+    error: null, 
     addEnvelope,
     updateEnvelope,
     deleteEnvelope,
@@ -286,6 +315,8 @@ export function useAppLogic(user: User | null) {
     deleteResource,
     createSnapshot,
     restoreSnapshot,
-    publishScenario
+    publishScenario,
+    resetAllData,
+    initializeProject
   };
 }
