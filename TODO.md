@@ -5,7 +5,7 @@
 
 - [X] **Découpage Composants :** Scinder les grosses vues (`BudgetView`, `ResourcesView`) en sous-composants (ex: `ResourceList`, `ResourceForm`, `BudgetKPIs`).
 - [X] **UX Feedback :** Remplacer les `window.alert()` et `window.confirm()` par un système de Notifications (Toasts) et de Modales modernes.
-- [ ] **Tests Unitaires :** Mettre en place Vitest et écrire des tests pour `utils.ts` (calculs des jours/coûts) et les nouveaux Services.
+- [X] **Tests Unitaires :** Mise en place Vitest + Happy-DOM. Tests écrits pour `utils.ts` (calculs des jours/coûts). *A compléter pour les Services une fois créés.*
 - [ ] **Code Quality :** Remplacer `Math.random()` par une librairie `uuid` pour la génération d'IDs fiables.
 - [ ] **Error Handling :** Ajouter des "Error Boundaries" React pour éviter le crash complet de l'app en cas d'erreur locale.
 
@@ -23,7 +23,13 @@
 
 ---
 
-## ✨ Améliorations Fonctionnelles Futures
+## ✨ Phase 3 :Améliorations Fonctionnelles Futures
 - [ ] **Import de Masse :** Fonctionnalité d'import Excel/CSV pour charger une liste de ressources (Nom, Prénom, TJM, Dates).
 - [ ] **Export de Données :** Export propre des tableaux vers Excel/CSV.
 - [ ] **Styling Build :** Intégration complète de Tailwind via PostCSS (suppression CDN).
+- [ ] **Ajouter un nom de tribu :** Pour chaque ressource, champ optionnel.
+- [ ] **Ajouter un nom de tribu :** Pour chaque ressource, champ optionnel.
+- [ ] **Ajouter un champs interne/externe/alternant/stagiaire :** Pour chaque ressource, champ obligatoire.
+- [ ] **Tri dans la liste des ressources :** Permettre de faire des tris au niveau des colonnes
+- [ ] **Recherche dans les ressources :** Permettre de faire des recherches au niveau des ressources afin de trouver rapidement une personne ou un groupe de personnes (en fonction du nom de leur équipe)
+- [ ] **Modification de masse des ressources :** Sélectionner un group de personnes et leur appliquer une modification identique à toutes. Exemple appliquer un même TJM pour tout un groupe de personnes sélectionné.
