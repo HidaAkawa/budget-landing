@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Calculator, LogOut, Wallet, FileClock, ShieldAlert, Loader, RefreshCw, FolderPlus, Settings, Lock } from 'lucide-react'; // Added Lock icon
+import { LayoutDashboard, Users, Calculator, LogOut, Wallet, FileClock, ShieldAlert, Loader, FolderPlus, Settings, Lock } from 'lucide-react'; 
+import { Toaster, toast } from 'sonner';
 import { APP_NAME, AUTHORIZED_USERS } from './constants';
 import BudgetView from './BudgetView';
 import SimulationView from './SimulationView';
@@ -10,12 +11,16 @@ import { useAppLogic } from './hooks/useAppLogic';
 import { auth, googleProvider } from './services/firebase';
 import { signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 import { User } from "firebase/auth";
-import { ScenarioStatus } from './types'; // Import ScenarioStatus
+import { ScenarioStatus } from './types';
+import ConfirmModal from './components/ui/ConfirmModal';
 
 function App() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'budget' | 'resources' | 'simulation' | 'settings'>('dashboard');
   const [user, setUser] = useState<User | null>(null);
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
+  
+  // Modal State for Reset
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   const { 
     scenario, 
@@ -54,25 +59,40 @@ function App() {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error("Error signing in with Google", error);
+      toast.error("Erreur lors de la connexion avec Google.");
     }
   };
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      toast.success("Déconnexion réussie.");
     } catch (error) {
       console.error("Error signing out", error);
     }
   };
 
-  const handleReset = () => {
-      if (window.confirm("WARNING: This will delete ALL scenarios and reset the database to a clean state. Are you sure?")) {
-          resetAllData();
-      }
+  const handleResetConfirm = async () => {
+    const loadingToast = toast.loading("Réinitialisation de la base de données...");
+    try {
+      await resetAllData();
+      toast.dismiss(loadingToast);
+      toast.success("Base de données réinitialisée avec succès.");
+      setIsResetModalOpen(false);
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      toast.error("Erreur lors de la réinitialisation.");
+      console.error(error);
+    }
   };
   
-  const handleInitialize = () => {
-      initializeProject();
+  const handleInitialize = async () => {
+      try {
+        await initializeProject();
+        toast.success("Projet initialisé.");
+      } catch (e) {
+        toast.error("Erreur lors de l'initialisation.");
+      }
   };
 
   // Determine ReadOnly State
@@ -83,6 +103,7 @@ function App() {
   if (!user) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4">
+        <Toaster richColors position="top-center" />
         <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
           <div className="mb-6 flex justify-center">
             <div className="bg-brand-100 p-3 rounded-full">
@@ -106,6 +127,7 @@ function App() {
   if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4">
+        <Toaster richColors position="top-center" />
         <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
            <div className="mb-6 flex justify-center">
             <div className="bg-red-100 p-3 rounded-full">
@@ -142,6 +164,18 @@ function App() {
   if (!scenario) {
       return (
         <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4">
+            <Toaster richColors position="top-center" />
+            
+            <ConfirmModal 
+                isOpen={isResetModalOpen}
+                onClose={() => setIsResetModalOpen(false)}
+                onConfirm={handleResetConfirm}
+                title="Réinitialisation complète"
+                description="Êtes-vous sûr de vouloir tout supprimer ? Cette action effacera tous les scénarios de la base de données et est irréversible."
+                isDestructive={true}
+                confirmLabel="Tout Supprimer"
+            />
+
             <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
                 <div className="mb-6 flex justify-center">
                     <div className="bg-blue-100 p-3 rounded-full">
@@ -161,7 +195,7 @@ function App() {
                         Initialize Project
                     </button>
                     <button 
-                        onClick={handleReset}
+                        onClick={() => setIsResetModalOpen(true)}
                         className="w-full text-slate-500 hover:text-red-600 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
                     >
                         Hard Reset (Clean Database)
@@ -175,6 +209,18 @@ function App() {
   // --- MAIN APP UI ---
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
+      <Toaster richColors position="top-center" closeButton />
+      
+      <ConfirmModal 
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        onConfirm={handleResetConfirm}
+        title="Réinitialisation complète"
+        description="Êtes-vous sûr de vouloir tout supprimer ? Cette action effacera tous les scénarios de la base de données et est irréversible."
+        isDestructive={true}
+        confirmLabel="Tout Supprimer"
+      />
+
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0">
         <div className="p-6 flex items-center gap-3 text-white">
@@ -242,7 +288,7 @@ function App() {
           {currentView === 'budget' && (<div className="max-w-7xl mx-auto w-full"><BudgetView envelopes={scenario.envelopes} onAdd={addEnvelope} onUpdate={updateEnvelope} onDelete={deleteEnvelope} isReadOnly={isReadOnly} /></div>)}
           {currentView === 'resources' && (<ResourcesView resources={scenario.resources} onAdd={addResource} onUpdate={updateResource} onDelete={deleteResource} onUpdateOverride={updateResourceOverride} onBulkUpdateOverride={bulkUpdateResourceOverrides} onApplyHolidays={applyResourceHolidays} isReadOnly={isReadOnly} />)}
           {currentView === 'simulation' && (<div className="max-w-7xl mx-auto w-full"><SimulationView scenario={scenario} versions={versions} onCreateSnapshot={createSnapshot} onRestoreSnapshot={restoreSnapshot} onPublish={publishScenario} /></div>)}
-          {currentView === 'settings' && (<SettingsView user={user} onResetData={handleReset} />)}
+          {currentView === 'settings' && (<SettingsView user={user} onResetData={() => setIsResetModalOpen(true)} />)}
         </div>
       </main>
     </div>

@@ -1,30 +1,65 @@
 import React, { useState } from 'react';
-import { Save, RotateCcw, Globe, Archive, CheckCircle } from 'lucide-react';
+import { Save, RotateCcw, Globe, Archive } from 'lucide-react';
 import { Scenario, ScenarioStatus } from './types';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
+import ConfirmModal from './components/ui/ConfirmModal';
 
 interface SimulationViewProps {
   scenario: Scenario;
   versions: Scenario[];
   onCreateSnapshot: (name: string) => void;
   onRestoreSnapshot: (id: string) => void;
-  onPublish: () => void;
+  onPublish: () => Promise<string>;
 }
 
 export default function SimulationView({ scenario, versions, onCreateSnapshot, onRestoreSnapshot, onPublish }: SimulationViewProps) {
   const [snapshotName, setSnapshotName] = useState('');
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
 
   const handleCreateSnapshot = (e: React.FormEvent) => {
     e.preventDefault();
     if (snapshotName.trim()) {
       onCreateSnapshot(snapshotName);
+      toast.success("Nouvelle version créée");
       setSnapshotName('');
+    }
+  };
+
+  const handlePublishConfirm = async () => {
+    const loadingToast = toast.loading("Publication en cours...");
+    try {
+        const newDraftName = await onPublish();
+        toast.dismiss(loadingToast);
+        toast.success(
+            <div>
+                <strong>Publication réussie !</strong>
+                <ul className="list-disc pl-4 mt-1 text-xs">
+                    <li>Version actuelle archivée en MASTER</li>
+                    <li>Nouveau brouillon créé : {newDraftName}</li>
+                </ul>
+            </div>
+        );
+        setIsPublishModalOpen(false);
+    } catch (e) {
+        toast.dismiss(loadingToast);
+        toast.error("Erreur lors de la publication. Vérifiez votre connexion.");
+        console.error(e);
     }
   };
 
   return (
     <div className="p-6 space-y-6 h-full flex flex-col">
       
+      <ConfirmModal 
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        onConfirm={handlePublishConfirm}
+        title="Confirmer la publication"
+        description="Voulez-vous publier ce DRAFT comme MASTER officiel ? Cela archivera le MASTER actuel et créera automatiquement un nouveau DRAFT pour continuer à travailler."
+        confirmLabel="Publier (Master)"
+      />
+
       {/* Current Scenario Status Header */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
         <div>
@@ -45,7 +80,7 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
 
         {scenario.status !== ScenarioStatus.MASTER && (
           <button
-            onClick={onPublish}
+            onClick={() => setIsPublishModalOpen(true)}
             className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 font-medium shadow-sm transition-all"
           >
             <Globe className="w-5 h-5" />

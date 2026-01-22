@@ -104,7 +104,7 @@ export function useAppLogic(user: User | null) {
         setActiveScenarioId(docRef.id);
       } catch(e) {
           console.error("Init failed", e);
-          alert("Initialization failed. Check console.");
+          throw e;
       } finally {
           setIsLoading(false);
       }
@@ -121,9 +121,9 @@ export function useAppLogic(user: User | null) {
           
           setActiveScenarioId(null);
           await initializeProject();
-          alert("Your data has been reset.");
       } catch (err) {
           console.error("Reset failed:", err);
+          throw err;
       } finally {
           setIsLoading(false);
       }
@@ -242,9 +242,7 @@ export function useAppLogic(user: User | null) {
   const publishScenario = async () => {
     if (!scenario || !user || scenario.status !== ScenarioStatus.DRAFT) return;
 
-    if (!window.confirm("Publier ce DRAFT comme MASTER ?\nCela archivera le MASTER actuel et ouvrira un nouveau DRAFT pour la suite.")) {
-        return;
-    }
+    // Suppression du window.confirm ici. C'est l'UI qui gère ça.
 
     try {
         const batch = writeBatch(db);
@@ -288,14 +286,16 @@ export function useAppLogic(user: User | null) {
 
         // 4. Switch to the NEW DRAFT
         // We use a small timeout to let Firestore trigger the snapshot listener
-        setTimeout(() => {
-             setActiveScenarioId(newDraftRef.id);
-             alert(`Publication réussie !\n\n1. Version publiée en MASTER\n2. Nouveau DRAFT créé : ${newDraftName}`);
-        }, 500);
+        return new Promise<string>((resolve) => {
+            setTimeout(() => {
+                 setActiveScenarioId(newDraftRef.id);
+                 resolve(newDraftName);
+            }, 500);
+        });
 
     } catch (e) {
         console.error("Publish failed:", e);
-        alert("Erreur lors de la publication. Vérifiez la console.");
+        throw e;
     }
   };
 

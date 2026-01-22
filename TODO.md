@@ -3,8 +3,8 @@
 ## 🛠️ Phase 1 : Qualimétrie & Dette Technique (Code Health)
 *Objectif : Rendre le code maintenable, testable et plus propre.*
 
-- [ ] **Découpage Composants :** Scinder les grosses vues (`BudgetView`, `ResourcesView`) en sous-composants (ex: `ResourceList`, `ResourceForm`, `BudgetKPIs`).
-- [ ] **UX Feedback :** Remplacer les `window.alert()` et `window.confirm()` par un système de Notifications (Toasts) et de Modales modernes.
+- [X] **Découpage Composants :** Scinder les grosses vues (`BudgetView`, `ResourcesView`) en sous-composants (ex: `ResourceList`, `ResourceForm`, `BudgetKPIs`).
+- [X] **UX Feedback :** Remplacer les `window.alert()` et `window.confirm()` par un système de Notifications (Toasts) et de Modales modernes.
 - [ ] **Tests Unitaires :** Mettre en place Vitest et écrire des tests pour `utils.ts` (calculs des jours/coûts) et les nouveaux Services.
 - [ ] **Code Quality :** Remplacer `Math.random()` par une librairie `uuid` pour la génération d'IDs fiables.
 - [ ] **Error Handling :** Ajouter des "Error Boundaries" React pour éviter le crash complet de l'app en cas d'erreur locale.
