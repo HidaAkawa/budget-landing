@@ -1,20 +1,51 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 💰 BudgetLanding
 
-# Run and deploy your AI Studio app
+Application de pilotage budgétaire et de gestion de ressources IT.
+Permet de gérer des scénarios budgétaires (Draft/Master), de suivre les consommés et de simuler des projections.
 
-This contains everything you need to run your app locally.
+## 📚 Documentation Technique
 
-View your app in AI Studio: https://ai.studio/apps/drive/1y1awjnE-EX_hkeW4USYvDZhZU0tFLnLZ
+Pour une vision détaillée de l'architecture (Firestore V2, Hooks, Services), consultez le document d'architecture dédié :
+👉 **[ARCHITECTURE.md](./ARCHITECTURE.md)**
 
-## Run Locally
+## 🚀 Fonctionnalités Clés
 
-**Prerequisites:**  Node.js
+*   **Dashboard :** Vue synthétique des KPIs (CAPEX/OPEX, Consommé vs Budget).
+*   **Budget :** Gestion des enveloppes budgétaires.
+*   **Ressources :** Gestion des collaborateurs (TJM, Dates, Congés, Allocations).
+*   **Simulation :** Système de versionning complet (Drafts, Snapshots, Publication Master).
+*   **Settings :** Diagnostics techniques et outils de maintenance.
 
+## 🛠️ Installation & Démarrage
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Pré-requis
+*   Node.js (v18+)
+*   Un projet Firebase configuré (Firestore + Auth Google)
+
+### Configuration
+Assurez-vous d'avoir les variables d'environnement configurées pour Firebase dans votre fichier `.env` ou `.env.local`.
+
+### Commandes
+
+```bash
+# Installation des dépendances
+npm install
+
+# Lancer le serveur de développement
+npm run dev
+
+# Lancer les tests unitaires
+npm test
+
+# Construire pour la production
+npm run build
+```
+
+## 🏗️ État d'avancement
+
+*   **Phase 1 (Qualimétrie) :** ✅ Terminée
+*   **Phase 2 (Scalabilité & Performance) :** ✅ Terminée
+    *   Migration vers sous-collections Firestore (V2).
+    *   Optimisation des calculs (WeakMap Cache).
+    *   Virtualisation des listes (Suppression de react-window pour une solution native optimisée).
+*   **Phase 3 (Fonctionnalités) :** 🚧 À venir

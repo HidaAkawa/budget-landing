@@ -14,22 +14,25 @@
 ## 🚀 Phase 2 : Refactoring Performance & Scalabilité (Prioritaire)
 *Objectif : Supporter +250 ressources et +50 versions sans ralentissement ni crash (Migration vers Sous-collections).*
 
-1.  [ ] **Migration du Modèle (Script) :** Créer un script temporaire pour extraire le tableau `resources` des scénarios existants et créer les documents correspondants dans une sous-collection Firestore `scenarios/{id}/resources`.
-2.  [ ] **Service Layer (Découplage) :** Extraire la logique Firebase de `useAppLogic.ts` vers des services dédiés (`services/scenarioService.ts`, `services/resourceService.ts`) pour alléger le hook.
-3.  [ ] **Adaptation Lecture (Backend) :** Modifier le chargement pour ne récupérer que les en-têtes de scénarios, et charger la collection `resources` à la demande (lazy loading).
-4.  [ ] **Adaptation Écriture (Backend) :** Mettre à jour les fonctions CRUD (`add`, `update`, `delete`) pour interagir avec les documents de la sous-collection.
-5.  [ ] **Adaptation UI (Virtualisation) :** Implémenter `react-window` dans `ResourcesView` pour gérer l'affichage performant de listes longues.
-6.  [ ] **Optimisation Calculs :** Sortir les calculs lourds (stats annuelles) du cycle de rendu principal (Memoization avancée).
+1.  [X] **Migration du Modèle (Script) :** Créer un script temporaire (`src/migrations/migrateToSubcollections.ts`) pour extraire le tableau `resources`.
+2.  [X] **Service Layer (Découplage) :** Extraire la logique Firebase vers des services dédiés. *Mise à jour (2026) : Centralisation complète et propre dans `src/services/` (suppression du dossier racine).*
+3.  [X] **Adaptation Lecture (Backend) :** Modifier le chargement pour ne récupérer que les en-têtes de scénarios, et charger la collection `resources` à la demande (lazy loading).
+4.  [X] **Adaptation Écriture (Backend) :** Mettre à jour les fonctions CRUD (`add`, `update`, `delete`) pour interagir avec les documents de la sous-collection.
+5.  [X] **Adaptation UI (Virtualisation) :** Implémenter `react-window` dans `ResourcesView` pour gérer l'affichage performant de listes longues.
+6.  [X] **Optimisation Calculs :** Sortir les calculs lourds (stats annuelles) du cycle de rendu principal (Memoization avancée).
 
 ---
 
-## ✨ Phase 3 :Améliorations Fonctionnelles Futures
+## ✨ Phase 3 : Améliorations Fonctionnelles Futures
+- [X] **Calendriers par défaut :** Module complet "Calendars" pour gérer des templates de congés/jours fériés par pays.
+    - Création/Edition/Suppression de modèles.
+    - Import automatique des jours fériés (API nager.at).
+    - Application automatique du modèle par défaut lors de la création d'une ressource.
+- [X] **Ajouter un nom de tribu :** Pour chaque ressource, champ optionnel `tribe`.
+- [X] **Ajouter un champs interne/externe/alternant/stagiaire :** Pour chaque ressource, champ obligatoire `contractType`.
+- [X] **Tri dans la liste des ressources :** Permettre de faire des tris au niveau des colonnes (Nom, TJM, Coût, Jours, etc.).
+- [X] **Recherche dans les ressources :** Permettre de faire des recherches (Nom, Tribu).
+- [ ] **Styling Build :** Intégration complète de Tailwind via PostCSS (suppression CDN).
+- [ ] **Modification de masse des ressources :** Sélectionner un group de personnes et leur appliquer une modification identique à toutes. Exemple appliquer un même TJM pour tout un groupe de personnes sélectionné.
 - [ ] **Import de Masse :** Fonctionnalité d'import Excel/CSV pour charger une liste de ressources (Nom, Prénom, TJM, Dates).
 - [ ] **Export de Données :** Export propre des tableaux vers Excel/CSV.
-- [ ] **Styling Build :** Intégration complète de Tailwind via PostCSS (suppression CDN).
-- [ ] **Ajouter un nom de tribu :** Pour chaque ressource, champ optionnel.
-- [ ] **Ajouter un nom de tribu :** Pour chaque ressource, champ optionnel.
-- [ ] **Ajouter un champs interne/externe/alternant/stagiaire :** Pour chaque ressource, champ obligatoire.
-- [ ] **Tri dans la liste des ressources :** Permettre de faire des tris au niveau des colonnes
-- [ ] **Recherche dans les ressources :** Permettre de faire des recherches au niveau des ressources afin de trouver rapidement une personne ou un groupe de personnes (en fonction du nom de leur équipe)
-- [ ] **Modification de masse des ressources :** Sélectionner un group de personnes et leur appliquer une modification identique à toutes. Exemple appliquer un même TJM pour tout un groupe de personnes sélectionné.

@@ -6,6 +6,13 @@ export enum Country {
   CO = 'CO'
 }
 
+export enum ContractType {
+  INTERNAL = 'INTERNAL',
+  EXTERNAL = 'EXTERNAL',
+  APPRENTICE = 'APPRENTICE',
+  INTERN = 'INTERN'
+}
+
 export enum EnvelopeType {
   RUN = 'RUN',
   CHANGE = 'CHANGE'
@@ -33,6 +40,8 @@ export interface Resource {
   id: string;
   firstName: string;
   lastName: string;
+  tribe?: string; // Optional Tribe name
+  contractType: ContractType; // Mandatory Contract Type
   tjm: number;
   country: Country;
   ratioChange: number; 
@@ -54,4 +63,14 @@ export interface Scenario {
   resources: Resource[];
   createdAt: number;
   updatedAt: number;
+}
+
+// New Interface for Calendar Templates
+export interface CalendarTemplate {
+  id: string;
+  name: string; // e.g. "Interne 100%", "Stagiaire"
+  country: Country;
+  isDefault: boolean; // Is this the default selection for this country?
+  overrides: OverrideMap; // Pre-defined leaves (e.g. August holidays)
+  dynamicHolidays?: string[]; // Store which dates are actual holidays vs just leaves
 }

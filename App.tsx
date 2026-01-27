@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Calculator, LogOut, Wallet, FileClock, ShieldAlert, Loader, FolderPlus, Settings, Lock } from 'lucide-react'; 
+import { LayoutDashboard, Users, Calculator, LogOut, Wallet, FileClock, ShieldAlert, Loader, FolderPlus, Settings, Lock, Calendar as CalendarIcon } from 'lucide-react'; 
 import { Toaster, toast } from 'sonner';
 import { APP_NAME, AUTHORIZED_USERS } from './constants';
 import BudgetView from './BudgetView';
@@ -7,15 +7,16 @@ import SimulationView from './SimulationView';
 import ResourcesView from './ResourcesView';
 import DashboardView from './DashboardView';
 import SettingsView from './SettingsView';
+import CalendarTemplatesManager from '@/src/components/settings/CalendarTemplatesManager';
 import { useAppLogic } from './hooks/useAppLogic';
-import { auth, googleProvider } from './services/firebase';
+import { auth, googleProvider } from '@/src/services/firebase';
 import { signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 import { User } from "firebase/auth";
 import { ScenarioStatus } from './types';
 import ConfirmModal from './components/ui/ConfirmModal';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'budget' | 'resources' | 'simulation' | 'settings'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'budget' | 'resources' | 'simulation' | 'settings' | 'calendars'>('dashboard');
   const [user, setUser] = useState<User | null>(null);
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   
@@ -232,6 +233,7 @@ function App() {
           <button onClick={() => setCurrentView('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentView === 'dashboard' ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'}`}><LayoutDashboard className="w-5 h-5" /><span>Dashboard</span></button>
           <button onClick={() => setCurrentView('budget')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentView === 'budget' ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'}`}><Wallet className="w-5 h-5" /><span>Budget</span></button>
           <button onClick={() => setCurrentView('resources')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentView === 'resources' ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'}`}><Users className="w-5 h-5" /><span>Resources</span></button>
+          <button onClick={() => setCurrentView('calendars')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentView === 'calendars' ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'}`}><CalendarIcon className="w-5 h-5" /><span>Calendars (Templates)</span></button>
           <button onClick={() => setCurrentView('simulation')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentView === 'simulation' ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'}`}><FileClock className="w-5 h-5" /><span>Versions & Publish</span></button>
         </nav>
 
@@ -264,19 +266,19 @@ function App() {
         <header 
             className={`
                 border-b border-slate-200 sticky top-0 z-10 px-8 py-4 flex justify-between items-center shrink-0 transition-colors
-                ${isReadOnly && currentView !== 'settings' ? 'bg-amber-50 border-amber-100' : 'bg-white'}
+                ${isReadOnly && currentView !== 'settings' && currentView !== 'calendars' ? 'bg-amber-50 border-amber-100' : 'bg-white'}
             `}
         >
             <div className="flex items-center gap-3">
-                <h2 className={`text-xl font-semibold capitalize flex items-center gap-2 ${isReadOnly && currentView !== 'settings' ? 'text-amber-900' : 'text-slate-800'}`}>
+                <h2 className={`text-xl font-semibold capitalize flex items-center gap-2 ${isReadOnly && currentView !== 'settings' && currentView !== 'calendars' ? 'text-amber-900' : 'text-slate-800'}`}>
                     {currentView === 'simulation' ? 'Versions & Publish' : currentView}
-                    {isReadOnly && currentView !== 'settings' && (
+                    {isReadOnly && currentView !== 'settings' && currentView !== 'calendars' && (
                         <Lock className="w-5 h-5 text-amber-600 opacity-75" />
                     )}
                 </h2>
             </div>
           
-          {currentView !== 'settings' && (
+          {currentView !== 'settings' && currentView !== 'calendars' && (
               <div className="flex items-center gap-4">
                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${scenario.status === 'MASTER' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{scenario.name} ({scenario.status})</span>
               </div>
@@ -287,6 +289,7 @@ function App() {
           {currentView === 'dashboard' && (<div className="max-w-[1920px] mx-auto w-full"><DashboardView envelopes={scenario.envelopes} resources={scenario.resources} /></div>)}
           {currentView === 'budget' && (<div className="max-w-7xl mx-auto w-full"><BudgetView envelopes={scenario.envelopes} onAdd={addEnvelope} onUpdate={updateEnvelope} onDelete={deleteEnvelope} isReadOnly={isReadOnly} /></div>)}
           {currentView === 'resources' && (<ResourcesView resources={scenario.resources} onAdd={addResource} onUpdate={updateResource} onDelete={deleteResource} onUpdateOverride={updateResourceOverride} onBulkUpdateOverride={bulkUpdateResourceOverrides} onApplyHolidays={applyResourceHolidays} isReadOnly={isReadOnly} />)}
+          {currentView === 'calendars' && (<div className="h-full"><CalendarTemplatesManager /></div>)}
           {currentView === 'simulation' && (<div className="max-w-7xl mx-auto w-full"><SimulationView scenario={scenario} versions={versions} onCreateSnapshot={createSnapshot} onRestoreSnapshot={restoreSnapshot} onPublish={publishScenario} /></div>)}
           {currentView === 'settings' && (<SettingsView user={user} onResetData={() => setIsResetModalOpen(true)} />)}
         </div>

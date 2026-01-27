@@ -1,20 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { BudgetEnvelope, Scenario, ScenarioStatus, Resource, OverrideValue } from '../types';
-import { eachDayOfInterval, format } from 'date-fns';
+import { BudgetEnvelope, Scenario, ScenarioStatus, Resource, OverrideValue } from '@/types';
 import { User } from 'firebase/auth';
-import { db } from '../services/firebase';
-import { 
-    collection, 
-    doc, 
-    onSnapshot, 
-    query, 
-    where, 
-    addDoc, 
-    updateDoc,
-    writeBatch,
-    getDocs,
-    deleteDoc
-} from 'firebase/firestore';
+import { scenarioService } from '@/src/services/scenarioService';
+import { resourceService } from '@/src/services/resourceService';
 
 // EMPTY INITIAL DATA
 const INITIAL_SCENARIO_DATA: Omit<Scenario, 'id'> = {
@@ -28,15 +16,12 @@ const INITIAL_SCENARIO_DATA: Omit<Scenario, 'id'> = {
 
 export function useAppLogic(user: User | null) {
   const [versions, setVersions] = useState<Scenario[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
+  const [activeResources, setActiveResources] = useState<Resource[]>([]);
+  const [isLoading, setIsLoading] = useState(true); // Global loading (scenarios)
+  const [isResourcesLoading, setIsResourcesLoading] = useState(false);
 
-  const scenario = useMemo(() => {
-      if (!activeScenarioId || versions.length === 0) return null;
-      return versions.find(v => v.id === activeScenarioId) || null;
-  }, [activeScenarioId, versions]);
-
-  // LOAD STRATEGY
+  // --- 1. LOAD SCENARIOS ---
   useEffect(() => {
     if (!user) {
         setVersions([]);
@@ -46,31 +31,22 @@ export function useAppLogic(user: User | null) {
 
     setIsLoading(true);
 
-    const q = query(
-        collection(db, "scenarios"), 
-        where("ownerId", "==", user.uid)
+    const unsubscribe = scenarioService.subscribeToScenarios(
+        user.uid,
+        (loadedScenarios) => {
+            setVersions(loadedScenarios);
+            setIsLoading(false);
+        },
+        (err) => {
+            console.error("Error loading scenarios:", err);
+            setIsLoading(false);
+        }
     );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const loadedDocs = snapshot.docs.map(d => ({id: d.id, ...d.data()} as Scenario));
-        // Sort: Drafts first, then by date desc
-        loadedDocs.sort((a, b) => {
-            if (a.status === ScenarioStatus.DRAFT && b.status !== ScenarioStatus.DRAFT) return -1;
-            if (a.status !== ScenarioStatus.DRAFT && b.status === ScenarioStatus.DRAFT) return 1;
-            return (b.updatedAt || 0) - (a.updatedAt || 0);
-        });
-        
-        setVersions(loadedDocs);
-        setIsLoading(false);
-    }, (err) => {
-        console.error("Error loading scenarios:", err);
-        setIsLoading(false);
-    });
 
     return () => unsubscribe();
   }, [user]);
 
-  // Auto-Select Logic
+  // --- 2. AUTO-SELECT LOGIC ---
   useEffect(() => {
       if (!isLoading && versions.length > 0 && !activeScenarioId) {
           // Priority 1: The most recent DRAFT
@@ -90,18 +66,59 @@ export function useAppLogic(user: User | null) {
       }
   }, [isLoading, versions, activeScenarioId]);
 
+  // --- 3. LOAD RESOURCES (SUBCOLLECTION) ---
+  useEffect(() => {
+      if (!activeScenarioId) {
+          setActiveResources([]);
+          return;
+      }
+
+      setIsResourcesLoading(true);
+      const unsubscribe = resourceService.subscribeToResources(
+          activeScenarioId,
+          (resources) => {
+              setActiveResources(resources);
+              setIsResourcesLoading(false);
+          },
+          (err) => {
+              console.error("Error loading resources:", err);
+              setIsResourcesLoading(false);
+          }
+      );
+
+      return () => unsubscribe();
+  }, [activeScenarioId]);
+
+  // --- 4. CONSTRUCT CURRENT SCENARIO OBJECT ---
+  const scenario = useMemo(() => {
+      if (!activeScenarioId || versions.length === 0) return null;
+      const baseScenario = versions.find(v => v.id === activeScenarioId);
+      if (!baseScenario) return null;
+
+      // CLEAN V2 IMPLEMENTATION (Post-Migration)
+      // We now rely purely on the activeResources (loaded from subcollection).
+      // We ignore baseScenario.resources (the old array), unless activeResources is empty,
+      // which might mean a network delay or a truly empty scenario.
+      // But for cleanliness, we should prefer the V2 source of truth.
+      
+      return {
+          ...baseScenario,
+          resources: activeResources
+      };
+  }, [activeScenarioId, versions, activeResources]);
+
+
+  // --- ACTIONS ---
 
   const initializeProject = async () => {
       if(!user) return;
       setIsLoading(true);
       try {
-        const docRef = await addDoc(collection(db, "scenarios"), {
+        const id = await scenarioService.createScenario({
             ...INITIAL_SCENARIO_DATA,
-            ownerId: user.uid,
-            createdAt: Date.now(),
-            updatedAt: Date.now()
+            ownerId: user.uid
         });
-        setActiveScenarioId(docRef.id);
+        setActiveScenarioId(id);
       } catch(e) {
           console.error("Init failed", e);
           throw e;
@@ -114,11 +131,15 @@ export function useAppLogic(user: User | null) {
       if (!user) return;
       setIsLoading(true);
       try {
-          const q = query(collection(db, "scenarios"), where("ownerId", "==", user.uid));
-          const querySnapshot = await getDocs(q);
-          const deletePromises = querySnapshot.docs.map(d => deleteDoc(d.ref));
-          await Promise.all(deletePromises);
-          
+          // Note: This naive delete won't delete subcollections!
+          // But for a hard reset dev tool, we might accept it leaves orphans, 
+          // or we should list scenarios and delete them one by one.
+          // For now, keeping logic simple as in original, but relying on service.
+          // Ideally scenarioService.deleteScenario should handle recursive delete (firebase requires cloud function or client side loop).
+          // Client side loop:
+          for (const v of versions) {
+              await scenarioService.deleteScenario(v.id);
+          }
           setActiveScenarioId(null);
           await initializeProject();
       } catch (err) {
@@ -129,8 +150,6 @@ export function useAppLogic(user: User | null) {
       }
   };
 
-  // --- ACTIONS WITH SAFEGUARDS ---
-
   const checkMutationAllowed = (): boolean => {
       if (!scenario) return false;
       if (scenario.status !== ScenarioStatus.DRAFT) {
@@ -140,95 +159,86 @@ export function useAppLogic(user: User | null) {
       return true;
   };
 
-  const updateScenarioFields = async (updates: Partial<Scenario>) => {
-    if (!activeScenarioId) return;
-    const docRef = doc(db, "scenarios", activeScenarioId);
-    try {
-        await updateDoc(docRef, { ...updates, updatedAt: Date.now() });
-    } catch (err) {
-        console.error("Update failed:", err);
-    }
-  };
-
+  // ENVELOPES (Still in Parent Document)
   const addEnvelope = (envelope: BudgetEnvelope) => {
     if (!checkMutationAllowed() || !scenario) return;
-    updateScenarioFields({ envelopes: [...scenario.envelopes, envelope] });
+    scenarioService.updateScenario(scenario.id, { envelopes: [...scenario.envelopes, envelope] });
   };
 
   const updateEnvelope = (id: string, updates: Partial<BudgetEnvelope>) => {
     if (!checkMutationAllowed() || !scenario) return;
-    updateScenarioFields({ envelopes: scenario.envelopes.map(e => e.id === id ? { ...e, ...updates } : e) });
+    scenarioService.updateScenario(scenario.id, { envelopes: scenario.envelopes.map(e => e.id === id ? { ...e, ...updates } : e) });
   };
 
   const deleteEnvelope = (id: string) => {
     if (!checkMutationAllowed() || !scenario) return;
-    updateScenarioFields({ envelopes: scenario.envelopes.filter(e => e.id !== id) });
+    scenarioService.updateScenario(scenario.id, { envelopes: scenario.envelopes.filter(e => e.id !== id) });
   };
 
-  const addResource = (resource: Resource) => {
+  // RESOURCES (Moved to Subcollection Service)
+  const addResource = async (resource: Resource) => {
     if (!checkMutationAllowed() || !scenario) return;
-    updateScenarioFields({ resources: [...scenario.resources, resource] });
+    // We strip the ID if it's a placeholder, but resourceService.addResource expects object without ID if we want auto-ID.
+    // However, the UI might have generated a temp ID.
+    // Let's assume resource object passed here has an ID generated by the UI (uuid).
+    // resourceService.addResource uses addDoc which generates ID.
+    // If we want to enforce the ID from UI, we should use setDoc.
+    // Let's look at resourceService implementation: it uses addDoc.
+    // So we should pass the object excluding ID, or modify service to accept ID.
+    // For now, let's trust the service creates a new ID.
+    const { id, ...data } = resource; 
+    await resourceService.addResource(scenario.id, data);
   };
 
-  const updateResource = (id: string, updates: Partial<Resource>) => {
+  const updateResource = async (id: string, updates: Partial<Resource>) => {
     if (!checkMutationAllowed() || !scenario) return;
-    updateScenarioFields({ resources: scenario.resources.map(r => r.id === id ? { ...r, ...updates } : r) });
+    await resourceService.updateResource(scenario.id, id, updates);
   };
 
-  const updateResourceOverride = (resourceId: string, date: string, value: OverrideValue | undefined) => {
+  const deleteResource = async (id: string) => {
     if (!checkMutationAllowed() || !scenario) return;
-    const res = scenario.resources.find(r => r.id === resourceId);
-    if (!res) return;
-    const newOverrides = { ...res.overrides };
-    if (value === undefined) delete newOverrides[date]; else newOverrides[date] = value;
-    updateScenarioFields({ resources: scenario.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides } : r) });
+    await resourceService.deleteResource(scenario.id, id);
   };
 
-  const bulkUpdateResourceOverrides = (resourceId: string, startDate: Date, endDate: Date, value: OverrideValue | undefined) => {
-    if (!checkMutationAllowed() || !scenario) return;
-    const res = scenario.resources.find(r => r.id === resourceId);
-    if (!res) return;
-    const newOverrides = { ...res.overrides };
-    eachDayOfInterval({ start: startDate, end: endDate }).forEach(day => {
-        const dateStr = format(day, 'yyyy-MM-dd');
-        if (value === undefined) delete newOverrides[dateStr]; else newOverrides[dateStr] = value;
-    });
-    updateScenarioFields({ resources: scenario.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides } : r) });
-  };
-
-  const applyResourceHolidays = (resourceId: string, year: number, externalHolidays: string[]) => {
+  const updateResourceOverride = async (resourceId: string, date: string, value: OverrideValue | undefined) => {
     if (!checkMutationAllowed() || !scenario) return;
     const res = scenario.resources.find(r => r.id === resourceId);
     if (!res) return;
-    const newOverrides = { ...res.overrides };
-    externalHolidays.forEach(d => newOverrides[d] = 0);
-    const newDynamicHolidays = [...new Set([...(res.dynamicHolidays || []), ...externalHolidays])];
-    updateScenarioFields({ 
-        resources: scenario.resources.map(r => r.id === resourceId ? { ...r, overrides: newOverrides, dynamicHolidays: newDynamicHolidays } : r) 
-    });
+    await resourceService.updateResourceOverride(scenario.id, res, date, value);
   };
 
-  const deleteResource = (id: string) => {
+  const bulkUpdateResourceOverrides = async (resourceId: string, startDate: Date, endDate: Date, value: OverrideValue | undefined) => {
     if (!checkMutationAllowed() || !scenario) return;
-    updateScenarioFields({ resources: scenario.resources.filter(r => r.id !== id) });
+    const res = scenario.resources.find(r => r.id === resourceId);
+    if (!res) return;
+    await resourceService.bulkUpdateResourceOverrides(scenario.id, res, startDate, endDate, value);
   };
 
+  const applyResourceHolidays = async (resourceId: string, year: number, externalHolidays: string[]) => {
+    if (!checkMutationAllowed() || !scenario) return;
+    const res = scenario.resources.find(r => r.id === resourceId);
+    if (!res) return;
+    await resourceService.applyResourceHolidays(scenario.id, res, externalHolidays);
+  };
+
+  // VERSIONS / SNAPSHOTS
   const createSnapshot = async (name: string) => {
     if (!scenario || !user) return;
-    // Standard snapshot logic (manual)
-    const newDraft: Omit<Scenario, 'id'> = {
+    const newDraftData: Omit<Scenario, 'id'> = {
         name: name,
         status: ScenarioStatus.DRAFT,
         ownerId: user.uid,
         parentId: scenario.id,
         envelopes: scenario.envelopes,
-        resources: scenario.resources,
+        resources: [], // Don't put resources in parent array
         createdAt: Date.now(),
         updatedAt: Date.now(),
     };
     try {
-        const docRef = await addDoc(collection(db, "scenarios"), newDraft);
-        setActiveScenarioId(docRef.id);
+        const newId = await scenarioService.createScenario(newDraftData);
+        // Copy resources to the new snapshot's subcollection
+        await resourceService.copyResources(scenario.id, newId);
+        setActiveScenarioId(newId);
     } catch (e) {
         console.error("Error creating version:", e);
     }
@@ -238,61 +248,23 @@ export function useAppLogic(user: User | null) {
     setActiveScenarioId(snapshotId);
   };
 
-  // --- NEW PUBLISH LOGIC ---
   const publishScenario = async () => {
     if (!scenario || !user || scenario.status !== ScenarioStatus.DRAFT) return;
 
-    // Suppression du window.confirm ici. C'est l'UI qui gère ça.
-
     try {
-        const batch = writeBatch(db);
-        const now = Date.now();
-
-        // 1. Archive current MASTERS
         const currentMasters = versions.filter(v => v.status === ScenarioStatus.MASTER);
-        currentMasters.forEach(v => {
-            const ref = doc(db, "scenarios", v.id);
-            batch.update(ref, { 
-                status: ScenarioStatus.ARCHIVED,
-                updatedAt: now 
-            });
-        });
+        
+        // 1. Publish (Archive old masters, Promote current, Create new Draft header)
+        const newDraftId = await scenarioService.publishScenario(scenario.id, user.uid, scenario, currentMasters);
+        
+        // 2. Copy resources to the new Draft
+        // The promoted master (scenario.id) already has resources in its subcollection.
+        // We need to copy them to the newDraftId subcollection.
+        await resourceService.copyResources(scenario.id, newDraftId);
 
-        // 2. Promote current DRAFT to MASTER
-        const newMasterRef = doc(db, "scenarios", scenario.id);
-        batch.update(newMasterRef, { 
-            status: ScenarioStatus.MASTER, 
-            updatedAt: now 
-        });
-
-        // 3. Create NEW DRAFT immediately
-        const timestamp = format(new Date(), 'yyyyMMdd-HHmm');
-        const username = user.displayName?.split(' ')[0].toUpperCase() || 'USER';
-        const newDraftName = `${username}-${timestamp}`;
-
-        const newDraftRef = doc(collection(db, "scenarios"));
-        batch.set(newDraftRef, {
-            name: newDraftName,
-            status: ScenarioStatus.DRAFT,
-            ownerId: user.uid,
-            parentId: scenario.id, // Parent is the one we just published
-            envelopes: scenario.envelopes, // Clone data
-            resources: scenario.resources, // Clone data
-            createdAt: now,
-            updatedAt: now,
-        });
-
-        await batch.commit();
-
-        // 4. Switch to the NEW DRAFT
-        // We use a small timeout to let Firestore trigger the snapshot listener
-        return new Promise<string>((resolve) => {
-            setTimeout(() => {
-                 setActiveScenarioId(newDraftRef.id);
-                 resolve(newDraftName);
-            }, 500);
-        });
-
+        // 3. Switch to new draft
+        setActiveScenarioId(newDraftId);
+        return newDraftId; // Return ID or Name if needed by UI
     } catch (e) {
         console.error("Publish failed:", e);
         throw e;
@@ -302,8 +274,7 @@ export function useAppLogic(user: User | null) {
   return {
     scenario,
     versions,
-    isLoading,
-    error: null, 
+    isLoading: isLoading || isResourcesLoading, // Combine loading states
     addEnvelope,
     updateEnvelope,
     deleteEnvelope,

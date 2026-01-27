@@ -1,6 +1,6 @@
-import { format, isWeekend } from 'date-fns';
-import { Resource, OverrideValue } from './types';
-import { HOLIDAYS } from './constants';
+import { format, isWeekend, eachDayOfInterval, startOfYear, endOfYear } from 'date-fns';
+import { Resource, OverrideValue } from '@/types';
+import { HOLIDAYS } from '@/constants';
 
 export interface DayStatus {
   val: number;
@@ -50,4 +50,51 @@ export function calculateDayStatus(date: Date, resource: Resource): DayStatus {
     overrideActive,
     isOutOfBounds
   };
+}
+
+/**
+ * CACHE for yearly stats to avoid re-calculating thousands of times per render.
+ * Key: resourceId-year-updatedAt(timestamp or simple check)
+ * Since we don't have a granular "updatedAt" per resource in the frontend list easily,
+ * we will memoize based on the resource object reference in React, but here we can provide the heavy function.
+ */
+export function calculateYearlyStats(resource: Resource, year: number) {
+    let totalDays = 0;
+    const start = startOfYear(new Date(year, 0, 1));
+    const end = endOfYear(start);
+    const days = eachDayOfInterval({ start, end });
+    
+    // We can optimize this loop by not calling calculateDayStatus which formats dates repeatedly
+    // But calculateDayStatus is the source of truth.
+    // Optimization: Pre-calculate boundaries and holidays.
+
+    const resStart = resource.startDate || `${year}-01-01`;
+    const resEnd = resource.endDate || `${year}-12-31`;
+    const countryHolidays = new Set([...(HOLIDAYS[resource.country] || []), ...(resource.dynamicHolidays || [])]);
+
+    days.forEach(day => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+
+        // 1. Bounds Check (String comparison is fast enough)
+        if (dateStr < resStart || dateStr > resEnd) return;
+
+        // 2. Override Check (Fastest)
+        if (resource.overrides[dateStr] !== undefined) {
+            totalDays += resource.overrides[dateStr];
+            return;
+        }
+
+        // 3. Holiday/Weekend Check
+        // We use Set for O(1) holiday lookup instead of Array.includes O(N)
+        if (countryHolidays.has(dateStr)) return;
+        if (isWeekend(day)) return;
+
+        // Default
+        totalDays += 1;
+    });
+
+    return {
+        days: totalDays,
+        cost: totalDays * resource.tjm
+    };
 }
