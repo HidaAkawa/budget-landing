@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Users, Calculator, LogOut, Wallet, FileClock, ShieldAlert, Loader, FolderPlus, Settings, Lock, Calendar as CalendarIcon } from 'lucide-react'; 
 import { Toaster, toast } from 'sonner';
-import { APP_NAME, AUTHORIZED_USERS } from './constants';
+import { APP_NAME } from './constants';
 import BudgetView from './BudgetView';
 import SimulationView from './SimulationView';
 import ResourcesView from './ResourcesView';
@@ -14,11 +14,16 @@ import { signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 import { User } from "firebase/auth";
 import { ScenarioStatus } from './types';
 import ConfirmModal from './components/ui/ConfirmModal';
+import { userService, UserRole } from '@/src/services/userService';
 
 function App() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'budget' | 'resources' | 'simulation' | 'settings' | 'calendars'>('dashboard');
   const [user, setUser] = useState<User | null>(null);
+  
+  // Auth State
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true); // Initial loading
   
   // Modal State for Reset
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -44,12 +49,63 @@ function App() {
   } = useAppLogic(user);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      
       if (currentUser && currentUser.email) {
-        setIsAuthorized(AUTHORIZED_USERS.includes(currentUser.email));
+        setIsAuthChecking(true);
+        try {
+            // 1. Check if user is in whitelist
+            const role = await userService.getUserRole(currentUser.email);
+            
+            if (role) {
+                // User is authorized
+                setUserRole(role);
+                setIsAuthorized(true);
+            } else {
+                // User is NOT in whitelist.
+                // 2. CHECK BOOTSTRAP: If list is empty, make him Admin
+                // We can check if any user exists by subscribing briefly or just failing
+                // For safety, let's try to add him as admin blindly if checking fails? No.
+                // Better approach: User is rejected. But if he is the Developer, he can manually add himself in DB via Console.
+                // OR: We implement a "First user is Admin" logic here?
+                // Let's Keep it simple: Deny by default. 
+                // BUT: To help YOU (the user), I'll add a temporary logic: 
+                // If email is "damien.thibault@gmail.com" OR "hida.akawa@gmail.com" (example), auto-add as admin.
+                // Wait, cleaner way:
+                // Check if collection is empty? (Requires a new service method, let's skip for now to keep it secure).
+                
+                // FALLBACK FOR DEV: If you are the owner, you should add yourself manually in Firestore Console first,
+                // OR use a temporary backdoor here.
+                // Let's use the hardcoded list ONE LAST TIME to bootstrap the DB.
+                const LEGACY_ADMINS = ["damien.thibault@gmail.com", "user@example.com"];
+                if (LEGACY_ADMINS.includes(currentUser.email)) {
+                    // Auto-migrate legacy admin to Firestore
+                    try {
+                        await userService.addUser(currentUser.email, 'ADMIN', 'SYSTEM_BOOTSTRAP');
+                        setUserRole('ADMIN');
+                        setIsAuthorized(true);
+                        toast.success("Compte administrateur initialisé dans la base de données.");
+                    } catch (e) {
+                        // Already exists maybe?
+                        const r = await userService.getUserRole(currentUser.email);
+                        if (r) { setIsAuthorized(true); setUserRole(r); }
+                    }
+                } else {
+                    setIsAuthorized(false);
+                    setUserRole(null);
+                }
+            }
+        } catch (e) {
+            console.error("Auth check failed", e);
+            setIsAuthorized(false);
+        } finally {
+            setIsAuthChecking(false);
+        }
       } else {
         setIsAuthorized(false);
+        setUserRole(null);
+        setIsAuthChecking(false);
       }
     });
     return () => unsubscribe();
@@ -101,6 +157,17 @@ function App() {
 
   // --- RENDER LOGIC ---
 
+  if (isAuthChecking) {
+      return (
+        <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center gap-6">
+            <div className="flex items-center gap-3 text-lg text-slate-600">
+            <Loader className="w-6 h-6 animate-spin" />
+            <span>Vérification des accès...</span>
+            </div>
+        </div>
+      );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4">
@@ -136,7 +203,11 @@ function App() {
             </div>
           </div>
           <h1 className="text-2xl font-bold text-slate-800 mb-2">Access Denied</h1>
-          <p className="text-slate-500 mb-8">You are not authorized to access this application. Please contact the administrator.</p>
+          <p className="text-slate-500 mb-4">You are not authorized to access this application.</p>
+          <div className="bg-slate-50 p-3 rounded mb-6 text-sm text-slate-600 font-mono">
+            {user.email}
+          </div>
+          <p className="text-sm text-slate-400 mb-8">Please contact an administrator to request access.</p>
           <button 
             onClick={handleLogout}
             className="w-full bg-slate-600 hover:bg-slate-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
@@ -252,7 +323,7 @@ function App() {
             <div className="text-sm">
               <p className="text-white font-medium">{user.displayName}</p>
               <div className="flex items-center gap-1">
-                 <p className="text-xs text-slate-500">Admin</p>
+                 <p className="text-xs text-slate-500">{userRole === 'ADMIN' ? 'Admin' : 'User'}</p>
               </div>
             </div>
           </div>
@@ -291,7 +362,7 @@ function App() {
           {currentView === 'resources' && (<ResourcesView resources={scenario.resources} onAdd={addResource} onUpdate={updateResource} onDelete={deleteResource} onUpdateOverride={updateResourceOverride} onBulkUpdateOverride={bulkUpdateResourceOverrides} onApplyHolidays={applyResourceHolidays} isReadOnly={isReadOnly} />)}
           {currentView === 'calendars' && (<div className="h-full"><CalendarTemplatesManager /></div>)}
           {currentView === 'simulation' && (<div className="max-w-7xl mx-auto w-full"><SimulationView scenario={scenario} versions={versions} onCreateSnapshot={createSnapshot} onRestoreSnapshot={restoreSnapshot} onPublish={publishScenario} /></div>)}
-          {currentView === 'settings' && (<SettingsView user={user} onResetData={() => setIsResetModalOpen(true)} />)}
+          {currentView === 'settings' && (<SettingsView user={user} userRole={userRole} onResetData={() => setIsResetModalOpen(true)} />)}
         </div>
       </main>
     </div>

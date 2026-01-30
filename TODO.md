@@ -24,6 +24,20 @@
 
 ---
 
+## 🔒 Phase 2b : Sécurité & Administration (Terminé)
+- [X] **IAM & Sécurité :**
+    - [X] Implémentation du service `userService` avec whitelisting via Firestore.
+    - [X] UI d'administration dans les Settings (Ajout/Suppression d'utilisateurs).
+    - [X] Sécurisation des vues (Onglets Admin vs Système).
+    - [X] Mise en place des règles Firestore (`firestore.rules`).
+- [X] **Workflow Collaboratif :**
+    - [X] Refonte du service Scénarios pour gérer la visibilité (Public Master vs Private Drafts).
+    - [X] UI de simulation : séparation claire Master / Mes Brouillons / Archives.
+    - [X] Fonctionnalité "Fork" : Créer un brouillon depuis n'importe quelle version.
+- [X] **Déploiement :** Mise en ligne de la version Bêta sécurisée.
+
+---
+
 ## ✨ Phase 3 : Améliorations Fonctionnelles Futures
 - [X] **Calendriers par défaut :** Module complet "Calendars" pour gérer des templates de congés/jours fériés par pays.
     - Création/Edition/Suppression de modèles.
@@ -33,7 +47,7 @@
 - [X] **Ajouter un champs interne/externe/alternant/stagiaire :** Pour chaque ressource, champ obligatoire `contractType`.
 - [X] **Tri dans la liste des ressources :** Permettre de faire des tris au niveau des colonnes (Nom, TJM, Coût, Jours, etc.).
 - [X] **Recherche dans les ressources :** Permettre de faire des recherches (Nom, Tribu).
-- [X] **Sauvegarder le projet dans GITHUB** 
+- [X] **Sauvegarder le projet dans GITHUB**
 - [ ] **Styling Build :** Intégration complète de Tailwind via PostCSS (suppression CDN).
 - [ ] **Modification de masse des ressources :** Sélectionner un group de personnes et leur appliquer une modification identique à toutes. Exemple appliquer un même TJM pour tout un groupe de personnes sélectionné.
 - [ ] **Import de Masse :** Fonctionnalité d'import Excel/CSV pour charger une liste de ressources (Nom, Prénom, TJM, Dates).

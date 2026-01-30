@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, Activity, Shield, Play, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Activity, Shield, Play, AlertTriangle, Users, Lock } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { db } from '@/src/services/firebase';
 import { collection, getDocs, query, where, limit, getDoc, doc } from 'firebase/firestore';
+import UsersManager from '@/src/components/settings/UsersManager';
+import { UserRole } from '@/src/services/userService';
 
 interface SettingsViewProps {
   user: User;
+  userRole: UserRole | null;
   onResetData: () => void;
 }
 
@@ -19,7 +22,9 @@ interface TestResult {
   latency?: number;
 }
 
-export default function SettingsView({ user, onResetData }: SettingsViewProps) {
+export default function SettingsView({ user, userRole, onResetData }: SettingsViewProps) {
+  const [activeTab, setActiveTab] = useState<'system' | 'admin'>('system');
+
   // Diagnostics State
   const [results, setResults] = useState<TestResult[]>([
     { id: 'auth', name: 'Authentification Utilisateur', status: 'idle' },
@@ -49,7 +54,6 @@ export default function SettingsView({ user, onResetData }: SettingsViewProps) {
     updateResult('conn', { status: 'running' });
     const start = performance.now();
     try {
-        // Just try to fetch a doc reference, even if it doesn't exist, to test network
         await getDoc(doc(db, "health_check", "ping"));
         const end = performance.now();
         updateResult('conn', { status: 'success', latency: Math.round(end - start), message: 'Connexion établie' });
@@ -64,10 +68,10 @@ export default function SettingsView({ user, onResetData }: SettingsViewProps) {
         }
     }
 
-    // 3. PERMISSIONS CHECK (Read my own scenarios)
+    // 3. PERMISSIONS CHECK
     updateResult('perm', { status: 'running' });
     try {
-        const q = query(collection(db, "scenarios"), where("ownerId", "==", user.uid), limit(1));
+        const q = query(collection(db, "scenarios"), where("ownerId", "==", user.email), limit(1));
         await getDocs(q);
         updateResult('perm', { status: 'success', message: 'Accès aux données validé' });
     } catch (e: any) {
@@ -82,9 +86,31 @@ export default function SettingsView({ user, onResetData }: SettingsViewProps) {
         Paramètres de l'application
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in duration-300">
-            {/* DIAGNOSTIC PANEL */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-fit">
+      {/* TABS HEADER */}
+      <div className="flex border-b border-slate-200 mb-8">
+          <button
+            onClick={() => setActiveTab('system')}
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'system' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          >
+              <Activity className="w-4 h-4" />
+              Système & Diagnostics
+          </button>
+          
+          {userRole === 'ADMIN' && (
+              <button
+                onClick={() => setActiveTab('admin')}
+                className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'admin' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              >
+                  <Shield className="w-4 h-4" />
+                  Administration
+              </button>
+          )}
+      </div>
+
+      {/* TAB CONTENT: SYSTEM */}
+      {activeTab === 'system' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in duration-300">
+             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-fit">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-lg font-semibold text-slate-700 flex items-center gap-2">
                         <Activity className="w-5 h-5 text-brand-600" />
@@ -123,9 +149,21 @@ export default function SettingsView({ user, onResetData }: SettingsViewProps) {
                     <p>Vos données sont sécurisées via Firestore Rules. Seul votre compte ({user.email}) peut accéder à vos scénarios.</p>
                 </div>
             </div>
+          </div>
+      )}
 
-            {/* DANGER ZONE */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-fit">
+      {/* TAB CONTENT: ADMIN */}
+      {activeTab === 'admin' && userRole === 'ADMIN' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in duration-300">
+             {/* LEFT: IAM */}
+             <div className="space-y-8">
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-fit">
+                    <UsersManager currentUserEmail={user.email} />
+                </div>
+             </div>
+
+             {/* RIGHT: DANGER ZONE */}
+             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-fit">
                 <h2 className="text-lg font-semibold text-red-600 flex items-center gap-2 mb-6">
                     <AlertTriangle className="w-5 h-5" />
                     Zone de Danger
@@ -146,7 +184,8 @@ export default function SettingsView({ user, onResetData }: SettingsViewProps) {
                     </div>
                 </div>
             </div>
-        </div>
+          </div>
+      )}
     </div>
   );
 }

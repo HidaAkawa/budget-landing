@@ -17,25 +17,62 @@ const SCENARIO_COLLECTION = 'scenarios';
 
 export const scenarioService = {
     /**
-     * Subscribe to scenarios for a given user.
-     * Sorts: Drafts first, then by updatedAt desc.
+     * Subscribe to scenarios using specific queries to minimize reads.
+     * Pattern: Merge two disjoint queries (Public History + My Drafts).
      */
     subscribeToScenarios: (userId: string, onUpdate: (scenarios: Scenario[]) => void, onError: (error: any) => void): Unsubscribe => {
-        const q = query(
-            collection(db, SCENARIO_COLLECTION), 
-            where("ownerId", "==", userId)
-        );
+        let publicScenarios: Scenario[] = [];
+        let myDrafts: Scenario[] = [];
+        let hasLoadedPublic = false;
+        let hasLoadedDrafts = false;
 
-        return onSnapshot(q, (snapshot) => {
-            const loadedDocs = snapshot.docs.map(d => ({id: d.id, ...d.data()} as Scenario));
+        // Helper to merge and sort
+        const pushUpdate = () => {
+            // Only push if we have initialized both listeners (avoid partial inconsistent state flashes)
+            // Or push immediately for better responsiveness? Let's push immediately.
+            const merged = [...publicScenarios, ...myDrafts];
+            
             // Sort: Drafts first, then by date desc
-            loadedDocs.sort((a, b) => {
+            merged.sort((a, b) => {
                 if (a.status === ScenarioStatus.DRAFT && b.status !== ScenarioStatus.DRAFT) return -1;
                 if (a.status !== ScenarioStatus.DRAFT && b.status === ScenarioStatus.DRAFT) return 1;
                 return (b.updatedAt || 0) - (a.updatedAt || 0);
             });
-            onUpdate(loadedDocs);
+            
+            onUpdate(merged);
+        };
+
+        // QUERY 1: Public History (Master + Archived)
+        // We use 'in' operator to get both status in one query
+        const qPublic = query(
+            collection(db, SCENARIO_COLLECTION),
+            where("status", "in", [ScenarioStatus.MASTER, ScenarioStatus.ARCHIVED])
+        );
+
+        const unsubPublic = onSnapshot(qPublic, (snapshot) => {
+            publicScenarios = snapshot.docs.map(d => ({id: d.id, ...d.data()} as Scenario));
+            hasLoadedPublic = true;
+            pushUpdate();
         }, onError);
+
+        // QUERY 2: My Private Drafts
+        const qDrafts = query(
+            collection(db, SCENARIO_COLLECTION),
+            where("ownerId", "==", userId),
+            where("status", "==", ScenarioStatus.DRAFT)
+        );
+
+        const unsubDrafts = onSnapshot(qDrafts, (snapshot) => {
+            myDrafts = snapshot.docs.map(d => ({id: d.id, ...d.data()} as Scenario));
+            hasLoadedDrafts = true;
+            pushUpdate();
+        }, onError);
+
+        // Return a function that unsubscribes from BOTH
+        return () => {
+            unsubPublic();
+            unsubDrafts();
+        };
     },
 
     createScenario: async (scenarioData: Omit<Scenario, 'id'>): Promise<string> => {
@@ -77,28 +114,23 @@ export const scenarioService = {
             updatedAt: now 
         });
 
-        // 3. Create NEW DRAFT immediately
-        const timestamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 12); // Simple timestamp
-        const username = draftData.ownerId ? 'USER' : 'USER'; // Can be improved
+        // 3. Create NEW DRAFT immediately for continuity
+        const timestamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 12);
         const newDraftName = `DRAFT-${timestamp}`;
 
         const newDraftRef = doc(collection(db, SCENARIO_COLLECTION));
         const newDraftData = {
             name: newDraftName,
             status: ScenarioStatus.DRAFT,
-            ownerId: userId,
+            ownerId: userId, // The publisher becomes the owner of the new draft
             parentId: draftId,
             envelopes: draftData.envelopes,
-            resources: [], // Resources will be copied separately via resourceService if needed, or keeping empty for V2
+            resources: [], 
             createdAt: now,
             updatedAt: now,
         };
         
         batch.set(newDraftRef, newDraftData);
-
-        // Note: For V2 with subcollections, we would also need to copy resources here. 
-        // This might require a more complex server-side function or client-side iteration.
-        // For this step (Decoupling), we keep the logic similar to existing but inside the service.
         
         await batch.commit();
         return newDraftRef.id;
