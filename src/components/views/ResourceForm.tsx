@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, CreditCard, Globe, Percent, Calendar, Users, Briefcase } from 'lucide-react';
-import { Resource, Country, CalendarTemplate, ContractType } from './types';
+import { Resource, Country, CalendarTemplate, ContractType } from '@/types';
 import { calendarService } from '@/src/services/calendarService';
 
 // Utils

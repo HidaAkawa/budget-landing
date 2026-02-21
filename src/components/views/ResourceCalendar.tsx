@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, Gift, Layers, Check, Download, ChevronLeft, ChevronRight, Calculator, Banknote, Loader2, CalendarRange, Lock } from 'lucide-react';
-import { format, endOfMonth, eachDayOfInterval, isWeekend, addDays, startOfMonth } from 'date-fns';
-import { Resource, OverrideValue, Country } from './types';
-import { calculateDayStatus } from './utils';
+import { ArrowLeft, Layers, Check, Download, Calculator, Banknote, Loader2, CalendarRange, Lock } from 'lucide-react';
+import { format, endOfMonth, eachDayOfInterval, addDays, startOfMonth } from 'date-fns';
+import { Resource, OverrideValue, Country } from '@/types';
+import { calculateDayStatus } from '@/utils';
 
 const formatCurrency = (val: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
 
@@ -159,7 +159,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
       {/* Header Toolbar */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm shrink-0">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+          <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors" aria-label="Retour à la liste">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-4">
@@ -404,7 +404,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
 
 
                                     return (
-                                        <button 
+                                        <button
                                             key={dayIndex}
                                             onClick={() => handleDayClick(currentDate)}
                                             className={`
@@ -413,6 +413,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                                                 ${bgClass}
                                             `}
                                             title={`${formatDateDisplay(format(currentDate, 'yyyy-MM-dd'))}: ${val * 100}% ${isHoliday ? '(Holiday)' : ''}`}
+                                            aria-label={`${format(currentDate, 'dd/MM/yyyy')}: ${val * 100}%${isHoliday ? ' (Férié)' : ''}`}
                                             disabled={isReadOnly}
                                         >
                                             <span className={`text-[10px] font-bold ${isWknd || val === 0 ? 'text-slate-500' : 'text-slate-700'}`}>

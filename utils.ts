@@ -1,5 +1,5 @@
 import { format, isWeekend, eachDayOfInterval, startOfYear, endOfYear } from 'date-fns';
-import { Resource, OverrideValue } from '@/types';
+import { Resource } from '@/types';
 import { HOLIDAYS } from '@/constants';
 
 export interface DayStatus {

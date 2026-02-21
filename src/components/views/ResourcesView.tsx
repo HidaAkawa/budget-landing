@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Lock } from 'lucide-react';
-import { Resource, OverrideValue } from './types';
+import { Resource, OverrideValue } from '@/types';
 import ResourceCalendar from './ResourceCalendar';
 import ResourceList from './ResourceList';
 import ResourceForm from './ResourceForm';

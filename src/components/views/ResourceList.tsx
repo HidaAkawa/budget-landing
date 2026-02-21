@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Trash2, Edit2, User, Calendar as CalendarIcon, Calculator, CalendarRange, Users, Briefcase, Search, ArrowUpDown } from 'lucide-react';
-import { Resource, ContractType } from '@/types';
-import { useResourceStats, getCachedResourceStats } from '@/hooks/useResourceStats';
+import { Trash2, Edit2, User, Calendar as CalendarIcon, CalendarRange, Users, Search, ArrowUpDown } from 'lucide-react';
+import { Resource } from '@/types';
+import { useResourceStats, getCachedResourceStats } from '@/src/hooks/useResourceStats';
 
 // Utils
 const formatCurrency = (val: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
@@ -122,17 +122,18 @@ const ResourceRow = React.memo(({ resource, currentYear, isEditing, isReadOnly, 
 
                 {/* 9. Actions */}
                 <div className="text-center flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
+                    <button
                         onClick={() => onCalendarClick(resource.id)}
                         className="text-slate-400 hover:text-purple-600 hover:bg-purple-50 p-1.5 rounded transition-colors flex items-center gap-1"
                         title="Manage Calendar"
+                        aria-label="Ouvrir le calendrier"
                     >
                         <CalendarIcon className="w-4 h-4" />
                     </button>
                     {!isReadOnly && (
                         <>
-                            <button onClick={() => onEdit(resource)} className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors"><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => onDelete(resource.id)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => onEdit(resource)} className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors" aria-label="Modifier la ressource"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => onDelete(resource.id)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors" aria-label="Supprimer la ressource"><Trash2 className="w-4 h-4" /></button>
                         </>
                     )}
                 </div>

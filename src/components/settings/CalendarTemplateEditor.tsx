@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, Check, Save } from 'lucide-react'; // Save icon for visual indicator only
-import { CalendarTemplate, Country, Resource, OverrideValue } from '@/types';
-import ResourceCalendar from '@/ResourceCalendar';
+import { CalendarTemplate, ContractType, Country, Resource, OverrideValue } from '@/types';
+import ResourceCalendar from '@/src/components/views/ResourceCalendar';
 
 interface CalendarTemplateEditorProps {
     template: CalendarTemplate;
@@ -19,11 +19,12 @@ export default function CalendarTemplateEditor({ template, onBack, onUpdate }: C
         id: template.id,
         firstName: template.name,
         lastName: '',
+        contractType: ContractType.INTERNAL,
         tjm: 0,
         country: template.country,
         ratioChange: 0,
         startDate: `${currentYear}-01-01`,
-        endDate: `${currentYear + 1}-12-31`, 
+        endDate: `${currentYear + 1}-12-31`,
         overrides: template.overrides,
         dynamicHolidays: template.dynamicHolidays
     };
@@ -64,7 +65,7 @@ export default function CalendarTemplateEditor({ template, onBack, onUpdate }: C
         performUpdate({ overrides: newOverrides });
     };
 
-    const handleApplyHolidays = (id: string, year: number, holidays: string[]) => {
+    const handleApplyHolidays = (_id: string, _year: number, holidays: string[]) => {
         const newOverrides = { ...template.overrides };
         holidays.forEach(date => {
             newOverrides[date] = 0; // 0 = Off
@@ -95,7 +96,7 @@ export default function CalendarTemplateEditor({ template, onBack, onUpdate }: C
             {/* Header */}
             <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-sm">
                 <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+                    <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors" aria-label="Retour">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div>

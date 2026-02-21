@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Lock } from 'lucide-react';
-import { BudgetEnvelope } from './types';
+import { BudgetEnvelope } from '@/types';
 import BudgetKPIs from './BudgetKPIs';
 import BudgetList from './BudgetList';
 import BudgetForm from './BudgetForm';

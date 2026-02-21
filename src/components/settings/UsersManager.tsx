@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { userService, AppUser, UserRole } from '@/src/services/userService';
-import { Trash2, UserPlus, Shield, User, Loader } from 'lucide-react';
+import { Trash2, UserPlus, User, Loader } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface UsersManagerProps {
@@ -140,10 +140,11 @@ export default function UsersManager({ currentUserEmail }: UsersManagerProps) {
                                     {new Date(u.addedAt).toLocaleDateString()}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button 
+                                    <button
                                         onClick={() => handleDeleteUser(u)}
                                         className="text-red-600 hover:text-red-900 transition-colors p-1 rounded hover:bg-red-50"
                                         title="Supprimer l'accès"
+                                        aria-label="Supprimer l'utilisateur"
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </button>

@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { CalendarTemplate, Resource, OverrideValue } from '@/types';
+import { useEffect, useState, useMemo } from 'react';
+import { CalendarTemplate, ContractType, Resource, OverrideValue } from '@/types';
 import { calendarService } from '@/src/services/calendarService';
-import ConfirmModal from '@/components/ui/ConfirmModal';
+import ConfirmModal from '@/src/components/ui/ConfirmModal';
 import CalendarTemplateList from './CalendarTemplateList';
 import CalendarTemplateForm from './CalendarTemplateForm';
-import ResourceCalendar from '@/ResourceCalendar';
+import ResourceCalendar from '@/src/components/views/ResourceCalendar';
 
 export default function CalendarTemplatesManager() {
     const [templates, setTemplates] = useState<CalendarTemplate[]>([]);
@@ -47,12 +47,13 @@ export default function CalendarTemplatesManager() {
         return {
             id: activeCalendarTemplate.id,
             firstName: activeCalendarTemplate.name,
-            lastName: '', // Hidden in calendar usually
+            lastName: '',
+            contractType: ContractType.INTERNAL,
             tjm: 0,
             country: activeCalendarTemplate.country,
             ratioChange: 0,
             startDate: `${currentYear}-01-01`,
-            endDate: `${currentYear + 1}-12-31`, 
+            endDate: `${currentYear + 1}-12-31`,
             overrides: activeCalendarTemplate.overrides,
             dynamicHolidays: activeCalendarTemplate.dynamicHolidays
         };
@@ -61,7 +62,7 @@ export default function CalendarTemplatesManager() {
     // ACTIONS
 
     const handleAdd = async (template: Omit<CalendarTemplate, 'id'>) => {
-        const id = await calendarService.createTemplate(template);
+        await calendarService.createTemplate(template);
         // Refresh
         const data = await calendarService.getAllTemplates();
         setTemplates(data);
@@ -110,7 +111,7 @@ export default function CalendarTemplatesManager() {
         await handleUpdate(activeCalendarTemplate.id, { overrides: newOverrides });
     };
 
-    const handleApplyHolidays = async (id: string, year: number, holidays: string[]) => {
+    const handleApplyHolidays = async (_id: string, _year: number, holidays: string[]) => {
         if (!activeCalendarTemplate) return;
         const newOverrides = { ...activeCalendarTemplate.overrides };
         holidays.forEach(date => newOverrides[date] = 0);

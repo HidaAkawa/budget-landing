@@ -68,24 +68,27 @@ export default function CalendarTemplateList({ templates, onEdit, onDelete, onCa
                                     </div>
 
                                     <div className="col-span-3 flex justify-end gap-2">
-                                        <button 
+                                        <button
                                             onClick={(e) => { e.stopPropagation(); onCalendarClick(template); }}
                                             className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                                             title="Edit Calendar Rules"
+                                            aria-label="Ouvrir le calendrier"
                                         >
                                             <Calendar className="w-4 h-4" />
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={(e) => { e.stopPropagation(); onEdit(template); }}
                                             className={`p-2 rounded-lg transition-colors ${editingId === template.id ? 'text-blue-600 bg-blue-100' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'}`}
                                             title="Edit Metadata"
+                                            aria-label="Modifier le template"
                                         >
                                             <Edit2 className="w-4 h-4" />
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={(e) => onDelete(template, e)}
                                             className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                                             title="Delete Template"
+                                            aria-label="Supprimer le template"
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>

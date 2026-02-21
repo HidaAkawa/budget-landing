@@ -1,5 +1,4 @@
-import React from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -30,6 +29,8 @@ export default function ConfirmModal({
         className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+        aria-describedby="confirm-modal-description"
       >
         <div className="p-6">
           <div className="flex items-start gap-4">
@@ -37,10 +38,10 @@ export default function ConfirmModal({
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">
+              <h3 id="confirm-modal-title" className="text-lg font-semibold text-slate-900 mb-2">
                 {title}
               </h3>
-              <p className="text-slate-500 text-sm leading-relaxed">
+              <p id="confirm-modal-description" className="text-slate-500 text-sm leading-relaxed">
                 {description}
               </p>
             </div>

@@ -6,8 +6,8 @@
 - [X] **Découpage Composants :** Scinder les grosses vues (`BudgetView`, `ResourcesView`) en sous-composants (ex: `ResourceList`, `ResourceForm`, `BudgetKPIs`).
 - [X] **UX Feedback :** Remplacer les `window.alert()` et `window.confirm()` par un système de Notifications (Toasts) et de Modales modernes.
 - [X] **Tests Unitaires :** Mise en place Vitest + Happy-DOM. Tests écrits pour `utils.ts` (calculs des jours/coûts). *A compléter pour les Services une fois créés.*
-- [ ] **Code Quality :** Remplacer `Math.random()` par une librairie `uuid` pour la génération d'IDs fiables.
-- [ ] **Error Handling :** Ajouter des "Error Boundaries" React pour éviter le crash complet de l'app en cas d'erreur locale.
+- [ ] **Code Quality :** Remplacer `Math.random()` par `crypto.randomUUID()` ou Firestore `doc().id` pour la génération d'IDs fiables. *Note : les Resources utilisent déjà les IDs auto-générés Firestore, mais les Envelopes budget (`BudgetForm.tsx`) utilisent encore `Math.random()`.*
+- [X] **Error Handling :** Ajouter des "Error Boundaries" React pour éviter le crash complet de l'app en cas d'erreur locale. *Fait : `ErrorBoundary.tsx` wrappé dans `index.tsx`.*
 
 ---
 
@@ -20,7 +20,7 @@
 4.  [X] **Adaptation Écriture (Backend) :** Mettre à jour les fonctions CRUD (`add`, `update`, `delete`) pour interagir avec les documents de la sous-collection.
 5.  [X] **Adaptation UI (Virtualisation) :** Implémenter `react-window` dans `ResourcesView` pour gérer l'affichage performant de listes longues.
 6.  [X] **Optimisation Calculs :** Sortir les calculs lourds (stats annuelles) du cycle de rendu principal (Memoization avancée).
-7.  [ ] **Optimisation Build :** Traiter l'avertissement de taille de bundle JS (>500kB) via du Code Splitting (lazy loading des routes) ou configuration Rollup.
+7.  [X] **Optimisation Build :** Traiter l'avertissement de taille de bundle JS (>500kB) via du Code Splitting (lazy loading des routes) ou configuration Rollup. *Fait : `React.lazy()` + `Suspense` dans `App.tsx`, chunks manuels (firebase, vendor) dans `vite.config.ts`. Bundle gzip total ~181kB.*
 
 ---
 
@@ -48,7 +48,7 @@
 - [X] **Tri dans la liste des ressources :** Permettre de faire des tris au niveau des colonnes (Nom, TJM, Coût, Jours, etc.).
 - [X] **Recherche dans les ressources :** Permettre de faire des recherches (Nom, Tribu).
 - [X] **Sauvegarder le projet dans GITHUB**
-- [ ] **Styling Build :** Intégration complète de Tailwind via PostCSS (suppression CDN).
+- [X] **Styling Build :** Intégration complète de Tailwind via PostCSS (suppression CDN). *Fait : `tailwind.config.js` + `postcss.config.js` + `index.css` avec directives `@tailwind`. Aucune dépendance CDN.*
 - [ ] **Modification de masse des ressources :** Sélectionner un group de personnes et leur appliquer une modification identique à toutes. Exemple appliquer un même TJM pour tout un groupe de personnes sélectionné.
 - [ ] **Import de Masse :** Fonctionnalité d'import Excel/CSV pour charger une liste de ressources (Nom, Prénom, TJM, Dates).
 - [ ] **Export de Données :** Export propre des tableaux vers Excel/CSV.

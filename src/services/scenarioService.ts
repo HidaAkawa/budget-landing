@@ -20,11 +20,9 @@ export const scenarioService = {
      * Subscribe to scenarios using specific queries to minimize reads.
      * Pattern: Merge two disjoint queries (Public History + My Drafts).
      */
-    subscribeToScenarios: (userId: string, onUpdate: (scenarios: Scenario[]) => void, onError: (error: any) => void): Unsubscribe => {
+    subscribeToScenarios: (userId: string, onUpdate: (scenarios: Scenario[]) => void, onError: (error: Error) => void): Unsubscribe => {
         let publicScenarios: Scenario[] = [];
         let myDrafts: Scenario[] = [];
-        let hasLoadedPublic = false;
-        let hasLoadedDrafts = false;
 
         // Helper to merge and sort
         const pushUpdate = () => {
@@ -51,7 +49,6 @@ export const scenarioService = {
 
         const unsubPublic = onSnapshot(qPublic, (snapshot) => {
             publicScenarios = snapshot.docs.map(d => ({id: d.id, ...d.data()} as Scenario));
-            hasLoadedPublic = true;
             pushUpdate();
         }, onError);
 
@@ -64,7 +61,6 @@ export const scenarioService = {
 
         const unsubDrafts = onSnapshot(qDrafts, (snapshot) => {
             myDrafts = snapshot.docs.map(d => ({id: d.id, ...d.data()} as Scenario));
-            hasLoadedDrafts = true;
             pushUpdate();
         }, onError);
 

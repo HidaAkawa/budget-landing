@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, X, Check } from 'lucide-react';
-import { BudgetEnvelope, EnvelopeType } from './types';
+import { BudgetEnvelope, EnvelopeType } from '@/types';
 
 // Utils
 const generateId = () => Math.random().toString(36).substr(2, 9);

@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDayStatus } from '../utils';
-import { Resource, Country } from '../types';
+import { calculateDayStatus } from '@/utils';
+import { Resource, Country, ContractType } from '@/types';
 
 // Mock Resource Helper
-const createMockResource = (overrides: Record<string, any> = {}): Resource => ({
+const createMockResource = (overrides: Partial<Resource> = {}): Resource => ({
     id: 'test-res',
     firstName: 'John',
     lastName: 'Doe',
+    contractType: ContractType.INTERNAL,
     tjm: 500,
     country: Country.FR,
     ratioChange: 0,

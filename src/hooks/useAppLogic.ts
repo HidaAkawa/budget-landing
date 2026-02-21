@@ -198,11 +198,11 @@ export function useAppLogic(user: User | null) {
     await resourceService.bulkUpdateResourceOverrides(scenario.id, res, startDate, endDate, value);
   };
 
-  const applyResourceHolidays = async (resourceId: string, year: number, externalHolidays: string[]) => {
+  const applyResourceHolidays = async (resourceId: string, _year: number, externalHolidays?: string[]) => {
     if (!checkMutationAllowed() || !scenario) return;
     const res = scenario.resources.find(r => r.id === resourceId);
     if (!res) return;
-    await resourceService.applyResourceHolidays(scenario.id, res, externalHolidays);
+    await resourceService.applyResourceHolidays(scenario.id, res, externalHolidays || []);
   };
 
   // VERSIONS / SNAPSHOTS

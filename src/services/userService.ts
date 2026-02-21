@@ -1,10 +1,8 @@
 import { db } from './firebase';
-import { 
-    collection, 
-    getDocs, 
-    deleteDoc, 
-    query, 
-    where, 
+import {
+    collection,
+    deleteDoc,
+    query,
     doc,
     onSnapshot,
     setDoc,
@@ -78,7 +76,7 @@ export const userService = {
     /**
      * Real-time subscription to the user list (for Admin UI).
      */
-    subscribeToUsers: (onUpdate: (users: AppUser[]) => void, onError: (err: any) => void) => {
+    subscribeToUsers: (onUpdate: (users: AppUser[]) => void, onError: (err: Error) => void) => {
         const q = query(collection(db, COLLECTION_NAME));
         return onSnapshot(q, (snapshot) => {
             const users = snapshot.docs.map(doc => ({

@@ -1,16 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { Save, RotateCcw, Globe, Archive, Lock, History, FileEdit } from 'lucide-react';
-import { Scenario, ScenarioStatus } from './types';
+import { Save, RotateCcw, Globe, Lock, History, FileEdit } from 'lucide-react';
+import { Scenario, ScenarioStatus } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import ConfirmModal from './components/ui/ConfirmModal';
+import ConfirmModal from '@/src/components/ui/ConfirmModal';
 
 interface SimulationViewProps {
   scenario: Scenario;
   versions: Scenario[];
   onCreateSnapshot: (name: string) => void;
   onRestoreSnapshot: (id: string) => void;
-  onPublish: () => Promise<string>;
+  onPublish: () => Promise<string | undefined>;
 }
 
 export default function SimulationView({ scenario, versions, onCreateSnapshot, onRestoreSnapshot, onPublish }: SimulationViewProps) {

@@ -1,6 +1,7 @@
-import React from 'react';
+
+
 import { Edit2, Trash2 } from 'lucide-react';
-import { BudgetEnvelope, EnvelopeType } from './types';
+import { BudgetEnvelope, EnvelopeType } from '@/types';
 
 // Utils
 const formatCurrency = (val: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);

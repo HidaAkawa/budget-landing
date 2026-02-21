@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CheckCircle, XCircle, Activity, Shield, Play, AlertTriangle, Users, Lock } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle, XCircle, Activity, Shield, Play, AlertTriangle } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { db } from '@/src/services/firebase';
 import { collection, getDocs, query, where, limit, getDoc, doc } from 'firebase/firestore';

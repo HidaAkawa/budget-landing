@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { TrendingDown, TrendingUp, AlertCircle, CheckCircle, PieChart, Wallet } from 'lucide-react';
-import { BudgetEnvelope, EnvelopeType, Resource } from './types';
+import { BudgetEnvelope, EnvelopeType, Resource } from '@/types';
 import { startOfYear, endOfYear, eachDayOfInterval } from 'date-fns';
-import { calculateDayStatus } from './utils';
+import { calculateDayStatus } from '@/utils';
 
 const formatCurrency = (val: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
 const formatCompact = (val: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 1, notation: "compact" }).format(val);

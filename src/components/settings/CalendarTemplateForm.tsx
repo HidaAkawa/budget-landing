@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Globe, Check, Calendar } from 'lucide-react';
+import { Plus, Edit2, Globe, Check } from 'lucide-react';
 import { CalendarTemplate, Country } from '@/types';
 
 interface CalendarTemplateFormProps {
