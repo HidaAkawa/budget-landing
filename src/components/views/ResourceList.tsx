@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Trash2, Edit2, User, Calendar as CalendarIcon, CalendarRange, Users, Search, ArrowUpDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Trash2, Edit2, User, Calendar as CalendarIcon, CalendarRange, Users, Search, ArrowUpDown, ListChecks } from 'lucide-react';
 import { Resource } from '@/types';
 import { useResourceStats, getCachedResourceStats } from '@/src/hooks/useResourceStats';
 
@@ -19,6 +20,11 @@ interface ResourceListProps {
   onCalendarClick: (id: string) => void;
   editingId: string | null;
   isReadOnly?: boolean;
+  bulkEditMode?: boolean;
+  onToggleBulkEdit?: () => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: () => void;
 }
 
 type SortKey = keyof Resource | 'stats.days' | 'stats.cost';
@@ -30,7 +36,7 @@ interface SortConfig {
 }
 
 // Optimized Row Component
-const ResourceRow = React.memo(({ resource, currentYear, isEditing, isReadOnly, onCalendarClick, onEdit, onDelete }: {
+const ResourceRow = React.memo(({ resource, currentYear, isEditing, isReadOnly, onCalendarClick, onEdit, onDelete, bulkEditMode, isSelected, onToggleSelect }: {
     resource: Resource;
     currentYear: number;
     isEditing: boolean;
@@ -38,15 +44,42 @@ const ResourceRow = React.memo(({ resource, currentYear, isEditing, isReadOnly, 
     onCalendarClick: (id: string) => void;
     onEdit: (r: Resource) => void;
     onDelete: (id: string) => void;
+    bulkEditMode?: boolean;
+    isSelected?: boolean;
+    onToggleSelect?: (id: string) => void;
 }) => {
+    const { t } = useTranslation();
     const stats = useResourceStats(resource, currentYear);
 
-    // Grid columns configuration: 
+    // Grid columns configuration:
     // Name (1.8fr), Tribe (1fr), Type (0.8fr), Country (0.5fr), TJM (0.8fr), Days (0.7fr), Cost (1fr), Alloc (1.2fr), Actions (0.8fr)
     const gridClass = "grid grid-cols-[1.8fr_1fr_0.8fr_0.5fr_0.8fr_0.7fr_1fr_1.2fr_0.8fr] gap-3 items-center";
 
+    const handleRowClick = () => {
+        if (bulkEditMode && onToggleSelect) {
+            onToggleSelect(resource.id);
+        }
+    };
+
     return (
-        <div className={`flex items-center border-b border-slate-100 hover:bg-slate-50 transition-colors group ${isEditing ? 'bg-blue-50/50' : ''}`}>
+        <div
+            onClick={handleRowClick}
+            className={`flex items-center border-b border-slate-100 transition-colors group ${
+                bulkEditMode ? 'cursor-pointer' : ''
+            } ${isSelected ? 'bg-brand-50/60' : 'hover:bg-slate-50'} ${isEditing && !bulkEditMode ? 'bg-blue-50/50' : ''}`}
+        >
+            {/* Checkbox column */}
+            {bulkEditMode && (
+                <div className="pl-4 shrink-0 animate-in fade-in slide-in-from-left-2 duration-200">
+                    <input
+                        type="checkbox"
+                        checked={!!isSelected}
+                        onChange={() => onToggleSelect?.(resource.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                    />
+                </div>
+            )}
              <div className={`flex-1 min-w-0 px-4 py-3 ${gridClass}`}>
                  {/* 1. Name */}
                  <div className="min-w-0">
@@ -102,7 +135,7 @@ const ResourceRow = React.memo(({ resource, currentYear, isEditing, isReadOnly, 
                 {/* 7. Cost */}
                 <div className="text-right">
                     <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100 font-mono">
-                        {new Intl.NumberFormat('fr-FR', { notation: "compact", maximumFractionDigits: 1, style: 'currency', currency: 'EUR' }).format(stats.cost)}
+                        {new Intl.NumberFormat('fr-FR', { notation: "compact", maximumFractionDigits: 1, style: 'currency', currency: 'EUR' }).format(stats.cost).replace(/\s+€/, '€')}
                     </span>
                 </div>
 
@@ -125,15 +158,15 @@ const ResourceRow = React.memo(({ resource, currentYear, isEditing, isReadOnly, 
                     <button
                         onClick={() => onCalendarClick(resource.id)}
                         className="text-slate-400 hover:text-purple-600 hover:bg-purple-50 p-1.5 rounded transition-colors flex items-center gap-1"
-                        title="Manage Calendar"
-                        aria-label="Ouvrir le calendrier"
+                        title={t('resources.manageCalendar')}
+                        aria-label={t('templates.openCalendar')}
                     >
                         <CalendarIcon className="w-4 h-4" />
                     </button>
                     {!isReadOnly && (
                         <>
-                            <button onClick={() => onEdit(resource)} className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors" aria-label="Modifier la ressource"><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => onDelete(resource.id)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors" aria-label="Supprimer la ressource"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => onEdit(resource)} className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors" aria-label={t('resources.editResourceAction')}><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => onDelete(resource.id)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors" aria-label={t('resources.deleteResource')}><Trash2 className="w-4 h-4" /></button>
                         </>
                     )}
                 </div>
@@ -142,7 +175,8 @@ const ResourceRow = React.memo(({ resource, currentYear, isEditing, isReadOnly, 
     );
 });
 
-export default function ResourceList({ resources, onEdit, onDelete, onCalendarClick, editingId, isReadOnly = false }: ResourceListProps) {
+export default function ResourceList({ resources, onEdit, onDelete, onCalendarClick, editingId, isReadOnly = false, bulkEditMode = false, onToggleBulkEdit, selectedIds, onToggleSelect, onToggleSelectAll }: ResourceListProps) {
+  const { t } = useTranslation();
   const currentYear = new Date().getFullYear();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
@@ -226,37 +260,69 @@ export default function ResourceList({ resources, onEdit, onDelete, onCalendarCl
             <div className="flex items-center gap-3">
                 <h3 className="font-semibold text-slate-800 flex items-center gap-2">
                     <User className="w-5 h-5 text-slate-500" />
-                    Resources
+                    {t('resources.title')}
                 </h3>
-                <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:inline-block">Pilotage {currentYear}</span>
+                <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:inline-block">{t('resources.pilotage', { year: currentYear })}</span>
                 <span className="bg-brand-100 text-brand-700 px-2 py-1 rounded text-xs font-medium">{resources.length}</span>
             </div>
             
-            {/* Search Bar */}
-            <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                    type="text" 
-                    placeholder="Search name or tribe..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+                {/* Search Bar */}
+                <div className="relative flex-1 sm:w-64">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder={t('resources.searchPlaceholder')}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                    />
+                </div>
+
+                {/* Bulk Edit Toggle */}
+                {!isReadOnly && onToggleBulkEdit && (
+                    <button
+                        onClick={onToggleBulkEdit}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                            bulkEditMode
+                                ? 'bg-brand-600 text-white hover:bg-brand-700'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        <ListChecks className="w-4 h-4" />
+                        {bulkEditMode ? t('resources.cancelSelection') : t('resources.bulkEdit')}
+                    </button>
+                )}
             </div>
         </div>
         
         {/* TABLE HEADER */}
         <div className="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider shrink-0 border-b border-slate-200">
-             <div className={`px-4 py-3 ${gridClass}`}>
-                 <HeaderCell label="Name" sortKey="lastName" />
-                 <HeaderCell label="Tribe" sortKey="tribe" />
-                 <HeaderCell label="Type" sortKey="contractType" />
-                 <HeaderCell label="Country" sortKey="country" />
-                 <HeaderCell label="TJM" sortKey="tjm" align="right" />
-                 <HeaderCell label="Days" sortKey="stats.days" align="center" />
-                 <HeaderCell label="Cost" sortKey="stats.cost" align="right" />
-                 <HeaderCell label="Alloc (R/C)" />
-                 <HeaderCell label="Actions" align="center" />
+             <div className={`flex items-center ${bulkEditMode ? '' : ''}`}>
+                {bulkEditMode && (
+                    <div className="pl-4 shrink-0 animate-in fade-in slide-in-from-left-2 duration-200">
+                        <input
+                            type="checkbox"
+                            checked={selectedIds ? selectedIds.size > 0 && selectedIds.size === processedResources.length : false}
+                            ref={(el) => {
+                                if (el) el.indeterminate = (selectedIds?.size ?? 0) > 0 && (selectedIds?.size ?? 0) < processedResources.length;
+                            }}
+                            onChange={() => onToggleSelectAll?.()}
+                            className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                        />
+                    </div>
+                )}
+             <div className={`flex-1 px-4 py-3 ${gridClass}`}>
+                 <HeaderCell label={t('common.name')} sortKey="lastName" />
+                 <HeaderCell label={t('resources.tribe')} sortKey="tribe" />
+                 <HeaderCell label={t('common.type')} sortKey="contractType" />
+                 <HeaderCell label={t('common.country')} sortKey="country" />
+                 <HeaderCell label={t('resources.tjm')} sortKey="tjm" align="right" />
+                 <HeaderCell label={t('resources.days')} sortKey="stats.days" align="center" />
+                 <HeaderCell label={t('resources.cost')} sortKey="stats.cost" align="right" />
+                 <HeaderCell label={t('resources.allocRC')} />
+                 <HeaderCell label={t('common.actions')} align="center" />
+             </div>
              </div>
         </div>
 
@@ -265,7 +331,7 @@ export default function ResourceList({ resources, onEdit, onDelete, onCalendarCl
              {processedResources.length > 0 ? (
                 <div>
                     {processedResources.map(res => (
-                        <ResourceRow 
+                        <ResourceRow
                             key={res.id}
                             resource={res}
                             currentYear={currentYear}
@@ -274,6 +340,9 @@ export default function ResourceList({ resources, onEdit, onDelete, onCalendarCl
                             onCalendarClick={onCalendarClick}
                             onEdit={onEdit}
                             onDelete={onDelete}
+                            bulkEditMode={bulkEditMode}
+                            isSelected={selectedIds?.has(res.id)}
+                            onToggleSelect={onToggleSelect}
                         />
                     ))}
                 </div>

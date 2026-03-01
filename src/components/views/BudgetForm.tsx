@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Edit2, X, Check } from 'lucide-react';
 import { BudgetEnvelope, EnvelopeType } from '@/types';
 
@@ -13,6 +14,7 @@ interface BudgetFormProps {
 }
 
 export default function BudgetForm({ onAdd, onUpdate, onCancelEdit, editingEnvelope }: BudgetFormProps) {
+  const { t } = useTranslation();
   // Form State
   const [name, setName] = useState('');
   const [type, setType] = useState<EnvelopeType>(EnvelopeType.CHANGE);
@@ -63,22 +65,22 @@ export default function BudgetForm({ onAdd, onUpdate, onCancelEdit, editingEnvel
             {editingEnvelope ? (
             <>
                 <Edit2 className="w-4 h-4 text-blue-600" />
-                Edit Envelope
+                {t('budget.editEnvelope')}
             </>
             ) : (
             <>
                 <Plus className="w-4 h-4 text-brand-600" />
-                Add New Envelope
+                {t('budget.addNewEnvelope')}
             </>
             )}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Envelope Name</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t('budget.envelopeName')}</label>
             <input 
                 type="text" 
                 required
-                placeholder="e.g. Cyber Security"
+                placeholder={t('budget.envelopeNamePlaceholder')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none text-sm transition-shadow"
@@ -86,7 +88,7 @@ export default function BudgetForm({ onAdd, onUpdate, onCancelEdit, editingEnvel
             </div>
             
             <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t('common.type')}</label>
             <div className="grid grid-cols-2 gap-3">
                 <button
                 type="button"
@@ -97,7 +99,7 @@ export default function BudgetForm({ onAdd, onUpdate, onCancelEdit, editingEnvel
                     : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
                 >
-                RUN
+                {t('budget.run')}
                 </button>
                 <button
                 type="button"
@@ -108,13 +110,13 @@ export default function BudgetForm({ onAdd, onUpdate, onCancelEdit, editingEnvel
                     : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
                 >
-                CHANGE
+                {t('budget.change')}
                 </button>
             </div>
             </div>
 
             <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Amount (€)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t('budget.amountEuro')}</label>
             <input 
                 type="number" 
                 required
@@ -135,7 +137,7 @@ export default function BudgetForm({ onAdd, onUpdate, onCancelEdit, editingEnvel
                 className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm"
                 >
                 <X className="w-4 h-4" />
-                Cancel
+                {t('common.cancel')}
                 </button>
             )}
             <button 
@@ -147,7 +149,7 @@ export default function BudgetForm({ onAdd, onUpdate, onCancelEdit, editingEnvel
                 }`}
             >
                 {editingEnvelope ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                {editingEnvelope ? 'Update' : 'Add to Budget'}
+                {editingEnvelope ? t('common.update') : t('budget.addToBudget')}
             </button>
             </div>
         </form>

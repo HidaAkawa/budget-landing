@@ -3,6 +3,7 @@ import { Save, RotateCcw, Globe, Lock, History, FileEdit } from 'lucide-react';
 import { Scenario, ScenarioStatus } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import ConfirmModal from '@/src/components/ui/ConfirmModal';
 
 interface SimulationViewProps {
@@ -16,6 +17,7 @@ interface SimulationViewProps {
 export default function SimulationView({ scenario, versions, onCreateSnapshot, onRestoreSnapshot, onPublish }: SimulationViewProps) {
   const [snapshotName, setSnapshotName] = useState('');
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const { t } = useTranslation();
 
   // --- ORGANIZE VERSIONS ---
   const { master, drafts, archives } = useMemo(() => {
@@ -30,21 +32,21 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
     e.preventDefault();
     if (snapshotName.trim()) {
       onCreateSnapshot(snapshotName);
-      toast.success("Nouveau brouillon créé");
+      toast.success(t('simulation.newDraftCreated'));
       setSnapshotName('');
     }
   };
 
   const handlePublishConfirm = async () => {
-    const loadingToast = toast.loading("Publication en cours...");
+    const loadingToast = toast.loading(t('simulation.publishInProgress'));
     try {
         await onPublish(); // Returns new draft ID but we usually auto-switch
         toast.dismiss(loadingToast);
-        toast.success("Publication réussie ! Le MASTER a été mis à jour.");
+        toast.success(t('simulation.publishSuccess'));
         setIsPublishModalOpen(false);
     } catch (e) {
         toast.dismiss(loadingToast);
-        toast.error("Erreur lors de la publication.");
+        toast.error(t('simulation.publishError'));
         console.error(e);
     }
   };
@@ -69,7 +71,7 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
 
         {isActive ? (
             <span className="text-xs font-medium text-brand-600 px-2 py-1 bg-white rounded border border-brand-100 shadow-sm">
-                Actif
+                {t('common.active')}
             </span>
         ) : (
             <button 
@@ -77,7 +79,7 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
                 className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1"
             >
                 <RotateCcw className="w-3 h-3" />
-                Charger
+                {t('common.load')}
             </button>
         )}
     </div>
@@ -90,9 +92,9 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
         isOpen={isPublishModalOpen}
         onClose={() => setIsPublishModalOpen(false)}
         onConfirm={handlePublishConfirm}
-        title="Confirmer la publication (MASTER)"
-        description="Vous allez remplacer la version officielle (MASTER) par ce brouillon. L'ancien MASTER sera archivé."
-        confirmLabel="Publier maintenant"
+        title={t('simulation.confirmPublish')}
+        description={t('simulation.confirmPublishMessage')}
+        confirmLabel={t('simulation.publishNow')}
       />
 
       {/* HEADER: ACTIVE SCENARIO STATUS */}
@@ -111,7 +113,7 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
             }`}>
               {scenario.status}
             </span>
-            <span>Dernière modification : <strong>{format(scenario.updatedAt, 'dd/MM/yyyy à HH:mm')}</strong></span>
+            <span>{t('simulation.lastModified', { date: format(scenario.updatedAt, 'dd/MM/yyyy à HH:mm') })}</span>
             {/* Show Owner if available */}
             {scenario.ownerId && <span className="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-500">Owner ID: {scenario.ownerId.split('@')[0]}</span>}
           </div>
@@ -125,7 +127,7 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
                     className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium shadow-sm transition-all"
                 >
                     <Globe className="w-4 h-4" />
-                    Publier en MASTER
+                    {t('simulation.publishAsMaster')}
                 </button>
             )}
         </div>
@@ -140,14 +142,14 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden shrink-0">
                 <div className="bg-green-50/50 px-4 py-3 border-b border-green-100 flex justify-between items-center">
                     <h3 className="font-semibold text-green-900 flex items-center gap-2">
-                        <Globe className="w-4 h-4" /> Version Officielle
+                        <Globe className="w-4 h-4" /> {t('simulation.officialVersion')}
                     </h3>
                 </div>
                 <div className="p-4">
                     {master ? (
                         <VersionItem ver={master} isActive={master.id === scenario.id} />
                     ) : (
-                        <p className="text-sm text-slate-400 italic text-center py-2">Aucun Master défini.</p>
+                        <p className="text-sm text-slate-400 italic text-center py-2">{t('simulation.noMaster')}</p>
                     )}
                 </div>
             </div>
@@ -156,13 +158,13 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 min-h-0 flex flex-col">
                 <div className="bg-amber-50/50 px-4 py-3 border-b border-amber-100 flex justify-between items-center shrink-0">
                     <h3 className="font-semibold text-amber-900 flex items-center gap-2">
-                        <FileEdit className="w-4 h-4" /> Mes Brouillons
+                        <FileEdit className="w-4 h-4" /> {t('simulation.myDrafts')}
                     </h3>
                     <span className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-medium">{drafts.length}</span>
                 </div>
                 <div className="p-4 space-y-3 overflow-y-auto flex-1">
                     {drafts.length === 0 ? (
-                        <p className="text-sm text-slate-400 italic text-center py-4">Aucun brouillon en cours.</p>
+                        <p className="text-sm text-slate-400 italic text-center py-4">{t('simulation.noDrafts')}</p>
                     ) : (
                         drafts.map(d => <VersionItem key={d.id} ver={d} isActive={d.id === scenario.id} />)
                     )}
@@ -173,13 +175,13 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 min-h-0 flex flex-col">
                 <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center shrink-0">
                     <h3 className="font-semibold text-slate-700 flex items-center gap-2">
-                        <History className="w-4 h-4" /> Archives
+                        <History className="w-4 h-4" /> {t('simulation.archives')}
                     </h3>
                     <span className="bg-slate-200 text-slate-600 text-xs px-2 py-0.5 rounded-full font-medium">{archives.length}</span>
                 </div>
                 <div className="p-4 space-y-3 overflow-y-auto flex-1">
                     {archives.length === 0 ? (
-                        <p className="text-sm text-slate-400 italic text-center py-4">Aucune archive.</p>
+                        <p className="text-sm text-slate-400 italic text-center py-4">{t('simulation.noArchives')}</p>
                     ) : (
                         archives.map(a => <VersionItem key={a.id} ver={a} isActive={a.id === scenario.id} />)
                     )}
@@ -195,21 +197,21 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                 <h3 className="text-lg font-semibold text-slate-800 mb-2 flex items-center gap-2">
                     <Save className="w-5 h-5 text-brand-600" />
-                    Créer une nouvelle version
+                    {t('simulation.createNewVersion')}
                 </h3>
                 <p className="text-slate-500 mb-6 max-w-2xl text-sm">
                     Vous travaillez actuellement sur <strong>{scenario.name}</strong> ({scenario.status}). <br/>
-                    {isReadOnly 
-                        ? "Cette version est en lecture seule. Pour faire des modifications, vous devez créer une copie (Brouillon)." 
-                        : "Vous pouvez créer une copie de sauvegarde de ce brouillon avant de faire des modifications majeures."}
+                    {isReadOnly
+                        ? t('simulation.createVersionReadOnlyHelp')
+                        : t('simulation.createVersionDraftHelp')}
                 </p>
 
                 <form onSubmit={handleCreateSnapshot} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center p-4 bg-slate-50 rounded-lg border border-slate-200">
                     <div className="flex-1 w-full">
-                        <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Nom de la nouvelle version</label>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">{t('simulation.newVersionName')}</label>
                         <input 
                             type="text" 
-                            placeholder={`Ex: Copie de ${scenario.name}...`} 
+                            placeholder={t('simulation.newVersionPlaceholder', { name: scenario.name })} 
                             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"
                             value={snapshotName}
                             onChange={(e) => setSnapshotName(e.target.value)}
@@ -221,7 +223,7 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
                         className="mt-5 w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
                     >
                         <Save className="w-4 h-4" />
-                        {isReadOnly ? "Créer Brouillon & Éditer" : "Créer Copie"}
+                        {isReadOnly ? t('simulation.createDraftAndEdit') : t('simulation.createCopy')}
                     </button>
                 </form>
             </div>
@@ -230,13 +232,13 @@ export default function SimulationView({ scenario, versions, onCreateSnapshot, o
              <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 text-sm text-blue-800">
                 <h4 className="font-bold flex items-center gap-2 mb-2">
                     <Globe className="w-4 h-4" />
-                    Comment ça marche ?
+                    {t('simulation.howItWorks')}
                 </h4>
                 <ul className="list-disc pl-5 space-y-1 opacity-80">
-                    <li><strong>Version Officielle (Master) :</strong> Visible par tout le monde. Non modifiable.</li>
-                    <li><strong>Mes Brouillons :</strong> Visibles uniquement par vous. C'est ici que vous travaillez.</li>
-                    <li><strong>Publication :</strong> Quand votre brouillon est prêt, publiez-le pour qu'il devienne le nouveau Master.</li>
-                    <li><strong>Archives :</strong> Les anciens Masters sont conservés ici automatiquement.</li>
+                    <li>{t('simulation.helpMaster')}</li>
+                    <li>{t('simulation.helpDrafts')}</li>
+                    <li>{t('simulation.helpPublish')}</li>
+                    <li>{t('simulation.helpArchives')}</li>
                 </ul>
             </div>
 

@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { CheckCircle, XCircle, Activity, Shield, Play, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { CheckCircle, XCircle, Activity, Shield, Play, AlertTriangle, Users } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { db } from '@/src/services/firebase';
 import { collection, getDocs, query, where, limit, getDoc, doc } from 'firebase/firestore';
@@ -12,6 +13,8 @@ interface SettingsViewProps {
   onResetData: () => void;
 }
 
+type SettingsTab = 'system' | 'users' | 'danger';
+
 type TestStatus = 'idle' | 'running' | 'success' | 'error';
 
 interface TestResult {
@@ -23,13 +26,21 @@ interface TestResult {
 }
 
 export default function SettingsView({ user, userRole, onResetData }: SettingsViewProps) {
-  const [activeTab, setActiveTab] = useState<'system' | 'admin'>('system');
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<SettingsTab>('system');
+
+  // Redirect non-admin users to 'system' if they somehow land on a protected tab
+  useEffect(() => {
+    if (userRole !== 'ADMIN' && (activeTab === 'users' || activeTab === 'danger')) {
+      setActiveTab('system');
+    }
+  }, [userRole, activeTab]);
 
   // Diagnostics State
   const [results, setResults] = useState<TestResult[]>([
-    { id: 'auth', name: 'Authentification Utilisateur', status: 'idle' },
-    { id: 'conn', name: 'Connexion Firebase', status: 'idle' },
-    { id: 'perm', name: 'Permissions de Lecture', status: 'idle' },
+    { id: 'auth', name: t('settings.testAuth'), status: 'idle' },
+    { id: 'conn', name: t('settings.testConnection'), status: 'idle' },
+    { id: 'perm', name: t('settings.testPermissions'), status: 'idle' },
   ]);
 
   const updateResult = (id: string, updates: Partial<TestResult>) => {
@@ -44,9 +55,9 @@ export default function SettingsView({ user, userRole, onResetData }: SettingsVi
     updateResult('auth', { status: 'running' });
     await new Promise(r => setTimeout(r, 500)); // UI delay for feel
     if (user && user.uid) {
-        updateResult('auth', { status: 'success', message: `Connecté en tant que ${user.email}` });
+        updateResult('auth', { status: 'success', message: t('settings.connectedAs', { email: user.email }) });
     } else {
-        updateResult('auth', { status: 'error', message: 'Utilisateur non détecté' });
+        updateResult('auth', { status: 'error', message: t('settings.userNotDetected') });
         return;
     }
 
@@ -56,14 +67,15 @@ export default function SettingsView({ user, userRole, onResetData }: SettingsVi
     try {
         await getDoc(doc(db, "health_check", "ping"));
         const end = performance.now();
-        updateResult('conn', { status: 'success', latency: Math.round(end - start), message: 'Connexion établie' });
-    } catch (e: any) {
-        if (e.code === 'permission-denied') {
+        updateResult('conn', { status: 'success', latency: Math.round(end - start), message: t('settings.connectionEstablished') });
+    } catch (e: unknown) {
+        const err = e as { code?: string; message?: string };
+        if (err.code === 'permission-denied') {
              const end = performance.now();
-             updateResult('conn', { status: 'success', latency: Math.round(end - start), message: 'Connexion établie (règles actives)' });
+             updateResult('conn', { status: 'success', latency: Math.round(end - start), message: t('settings.connectionEstablishedRules') });
         } else {
             console.error(e);
-            updateResult('conn', { status: 'error', message: e.message || 'Erreur réseau' });
+            updateResult('conn', { status: 'error', message: err.message || t('settings.networkError') });
             return;
         }
     }
@@ -73,17 +85,17 @@ export default function SettingsView({ user, userRole, onResetData }: SettingsVi
     try {
         const q = query(collection(db, "scenarios"), where("ownerId", "==", user.email), limit(1));
         await getDocs(q);
-        updateResult('perm', { status: 'success', message: 'Accès aux données validé' });
-    } catch (e: any) {
+        updateResult('perm', { status: 'success', message: t('settings.dataAccessOk') });
+    } catch (e: unknown) {
         console.error(e);
-        updateResult('perm', { status: 'error', message: 'Accès refusé. Vérifiez les règles Firestore.' });
+        updateResult('perm', { status: 'error', message: t('settings.dataAccessDenied') });
     }
   };
 
   return (
     <div className="max-w-5xl mx-auto p-8">
       <h1 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
-        Paramètres de l'application
+        {t('settings.title')}
       </h1>
 
       {/* TABS HEADER */}
@@ -93,17 +105,26 @@ export default function SettingsView({ user, userRole, onResetData }: SettingsVi
             className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'system' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
           >
               <Activity className="w-4 h-4" />
-              Système & Diagnostics
+              {t('settings.systemTab')}
           </button>
-          
+
           {userRole === 'ADMIN' && (
-              <button
-                onClick={() => setActiveTab('admin')}
-                className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'admin' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-              >
-                  <Shield className="w-4 h-4" />
-                  Administration
-              </button>
+              <>
+                <button
+                  onClick={() => setActiveTab('users')}
+                  className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'users' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                >
+                    <Users className="w-4 h-4" />
+                    {t('settings.usersTab')}
+                </button>
+                <button
+                  onClick={() => setActiveTab('danger')}
+                  className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'danger' ? 'border-red-600 text-red-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                >
+                    <AlertTriangle className="w-4 h-4" />
+                    {t('settings.dangerTab')}
+                </button>
+              </>
           )}
       </div>
 
@@ -114,13 +135,13 @@ export default function SettingsView({ user, userRole, onResetData }: SettingsVi
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-lg font-semibold text-slate-700 flex items-center gap-2">
                         <Activity className="w-5 h-5 text-brand-600" />
-                        Santé du Système
+                        {t('settings.systemHealth')}
                     </h2>
                     <button 
                         onClick={runDiagnostics}
                         className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
                     >
-                        <Play className="w-4 h-4" /> Lancer le test
+                        <Play className="w-4 h-4" /> {t('settings.runTest')}
                     </button>
                 </div>
 
@@ -138,7 +159,7 @@ export default function SettingsView({ user, userRole, onResetData }: SettingsVi
                                     <span className="font-medium text-slate-700">{test.name}</span>
                                     {test.latency && <span className="text-xs font-mono text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">{test.latency}ms</span>}
                                 </div>
-                                <p className="text-sm text-slate-500 min-h-[1.25em]">{test.message || 'En attente...'}</p>
+                                <p className="text-sm text-slate-500 min-h-[1.25em]">{test.message || t('settings.waiting')}</p>
                             </div>
                         </div>
                     ))}
@@ -146,40 +167,41 @@ export default function SettingsView({ user, userRole, onResetData }: SettingsVi
                 
                 <div className="mt-6 p-4 bg-blue-50 text-blue-800 rounded-lg text-sm flex gap-3">
                     <Shield className="w-5 h-5 shrink-0" />
-                    <p>Vos données sont sécurisées via Firestore Rules. Seul votre compte ({user.email}) peut accéder à vos scénarios.</p>
+                    <p>{t('settings.securityInfo', { email: user.email })}</p>
                 </div>
             </div>
           </div>
       )}
 
-      {/* TAB CONTENT: ADMIN */}
-      {activeTab === 'admin' && userRole === 'ADMIN' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in duration-300">
-             {/* LEFT: IAM */}
-             <div className="space-y-8">
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-fit">
-                    <UsersManager currentUserEmail={user.email} />
-                </div>
-             </div>
+      {/* TAB CONTENT: USERS */}
+      {activeTab === 'users' && userRole === 'ADMIN' && (
+          <div className="max-w-2xl animate-in fade-in duration-300">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <UsersManager currentUserEmail={user.email} />
+            </div>
+          </div>
+      )}
 
-             {/* RIGHT: DANGER ZONE */}
-             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-fit">
+      {/* TAB CONTENT: DANGER ZONE */}
+      {activeTab === 'danger' && userRole === 'ADMIN' && (
+          <div className="max-w-xl animate-in fade-in duration-300">
+            <div className="bg-white rounded-xl shadow-sm border border-red-200 p-6">
                 <h2 className="text-lg font-semibold text-red-600 flex items-center gap-2 mb-6">
                     <AlertTriangle className="w-5 h-5" />
-                    Zone de Danger
+                    {t('settings.dangerZone')}
                 </h2>
 
                 <div className="space-y-6">
                     <div>
-                        <h3 className="font-medium text-slate-800 mb-1">Réinitialiser la base de données</h3>
+                        <h3 className="font-medium text-slate-800 mb-1">{t('settings.resetDatabase')}</h3>
                         <p className="text-sm text-slate-500 mb-3">
-                            Cette action est irréversible. Elle supprimera tous vos scénarios.
+                            {t('settings.resetDatabaseMessage')}
                         </p>
-                        <button 
+                        <button
                             onClick={onResetData}
                             className="w-full border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
                         >
-                            Tout supprimer et réinitialiser
+                            {t('settings.resetDatabaseButton')}
                         </button>
                     </div>
                 </div>

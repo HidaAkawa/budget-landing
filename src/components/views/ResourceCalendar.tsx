@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Layers, Check, Download, Calculator, Banknote, Loader2, CalendarRange, Lock } from 'lucide-react';
 import { format, endOfMonth, eachDayOfInterval, addDays, startOfMonth } from 'date-fns';
 import { Resource, OverrideValue, Country } from '@/types';
@@ -24,6 +25,7 @@ interface ResourceCalendarProps {
 }
 
 export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpdate, onUpdateResource, onApplyHolidays, onBack, isReadOnly = false }: ResourceCalendarProps) {
+  const { t } = useTranslation();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [statsMode, setStatsMode] = useState<'days' | 'cost'>('days');
   const [isLoadingHolidays, setIsLoadingHolidays] = useState(false);
@@ -76,7 +78,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
     const end = parseLocalDate(bulkEnd);
     
     if (start > end) {
-        alert("Start date must be before end date");
+        alert(t('calendar.startBeforeEnd'));
         return;
     }
 
@@ -102,18 +104,18 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
         setIsLoadingHolidays(false);
 
         if (holidays.length === 0) {
-            alert(`No holidays returned from API for ${resource.country} in ${selectedYear}.`);
+            alert(t('calendar.noHolidaysFound', { country: resource.country, year: selectedYear }));
             return;
         }
 
-        if (window.confirm(`Found ${holidays.length} public holidays for ${resource.country} in ${selectedYear} via API.\n\nLoad them into the calendar as 'Off' days?`)) {
+        if (window.confirm(t('calendar.confirmLoadHolidays', { count: holidays.length, country: resource.country, year: selectedYear }))) {
             onApplyHolidays(resource.id, selectedYear, holidays);
         }
 
     } catch (error) {
         setIsLoadingHolidays(false);
         console.error("Failed to load holidays:", error);
-        alert(`Failed to load holidays: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        alert(t('calendar.loadHolidaysError', { error: error instanceof Error ? error.message : 'Unknown error' }));
     }
   };
 
@@ -159,7 +161,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
       {/* Header Toolbar */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm shrink-0">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors" aria-label="Retour à la liste">
+          <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors" aria-label={t('calendar.backToList')}>
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-4">
@@ -178,7 +180,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                 </h2>
                 <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
                     <CalendarRange className="w-3 h-3" />
-                    <span>Contract: {formatDateDisplay(resource.startDate)} to {formatDateDisplay(resource.endDate)}</span>
+                    <span>{t('calendar.contract', { start: formatDateDisplay(resource.startDate), end: formatDateDisplay(resource.endDate) })}</span>
                 </div>
             </div>
 
@@ -192,12 +194,12 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                         : 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
                     }
                 `}
-                title="Double-click to toggle Days / Cost view"
+                title={t('calendar.doubleClickHint')}
             >
                 {statsMode === 'days' ? (
                     <>
                         <Calculator className="w-4 h-4" />
-                        <span className="text-sm font-bold">{yearlyStats} days</span>
+                        <span className="text-sm font-bold">{t('calendar.daysInYear', { days: yearlyStats })}</span>
                     </>
                 ) : (
                     <>
@@ -206,7 +208,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                     </>
                 )}
                 {/* ADDED: "in 2026" inside the badge */}
-                <span className="text-sm font-normal opacity-75 ml-1">in {selectedYear}</span>
+                <span className="text-sm font-normal opacity-75 ml-1">{t('calendar.inYear', { year: selectedYear })}</span>
             </div>
 
           </div>
@@ -214,12 +216,12 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
 
         <div className="flex items-center gap-6">
            <div className="flex items-center gap-3 text-xs font-medium text-slate-500 border-r border-slate-200 pr-6">
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-slate-200 rounded-sm"></div>Work</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-amber-100 border border-amber-200 rounded-sm"></div>Half</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-100 border border-red-200 rounded-sm"></div>Leave</span>
-                 <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-purple-100 border border-purple-200 rounded-sm"></div>Holiday (Off)</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-green-100 border border-green-200 rounded-sm"></div>Worked WE/Holiday</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-slate-200 rounded-sm border border-slate-300"></div>Weekend</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-slate-200 rounded-sm"></div>{t('calendar.work')}</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-amber-100 border border-amber-200 rounded-sm"></div>{t('calendar.half')}</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-100 border border-red-200 rounded-sm"></div>{t('calendar.leave')}</span>
+                 <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-purple-100 border border-purple-200 rounded-sm"></div>{t('calendar.holidayOff')}</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-green-100 border border-green-200 rounded-sm"></div>{t('calendar.workedWeHoliday')}</span>
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-slate-200 rounded-sm border border-slate-300"></div>{t('calendar.weekend')}</span>
             </div>
 
             {/* Load Holidays - Hidden in ReadOnly */}
@@ -228,10 +230,10 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                     onClick={handleLoadHolidays}
                     disabled={isLoadingHolidays}
                     className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={`Load standard holidays for ${resource.country} in ${selectedYear}`}
+                    title={t('calendar.loadHolidays', { country: resource.country, year: selectedYear })}
                 >
                     {isLoadingHolidays ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    {isLoadingHolidays ? 'Loading...' : 'Load Holidays'}
+                    {isLoadingHolidays ? t('calendar.loadingHolidays') : t('calendar.loadHolidaysBtn')}
                 </button>
             )}
         </div>
@@ -242,22 +244,22 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
         {isReadOnly ? (
              <div className="w-72 bg-slate-50 border-r border-slate-200 p-6 flex flex-col items-center justify-center text-center text-slate-400 shrink-0 z-10">
                 <Lock className="w-8 h-8 mb-3 text-slate-300" />
-                <h4 className="font-medium text-slate-500">Mass Update Locked</h4>
-                <p className="text-xs mt-1">Read-only mode active.</p>
+                <h4 className="font-medium text-slate-500">{t('calendar.massUpdateLocked')}</h4>
+                <p className="text-xs mt-1">{t('calendar.readOnlyActive')}</p>
              </div>
         ) : (
             <div className="w-72 bg-white border-r border-slate-200 p-6 flex flex-col gap-6 overflow-y-auto shrink-0 z-10">
             <div>
                 <h3 className="font-semibold text-slate-800 flex items-center gap-2 mb-4">
                 <Layers className="w-4 h-4 text-brand-600" />
-                Mass Update
+                {t('calendar.massUpdate')}
                 </h3>
                 <p className="text-xs text-slate-500 mb-4">
-                Select a date range to apply a presence rate to multiple days at once.
+                {t('calendar.massUpdateHelp')}
                 </p>
                 <form onSubmit={handleBulkApply} className="space-y-4">
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Start Date</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">{t('resources.startDate')}</label>
                     <input 
                     type="date" 
                     required
@@ -267,7 +269,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">End Date</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">{t('resources.endDate')}</label>
                     <input 
                     type="date" 
                     required
@@ -277,23 +279,23 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Value To Apply</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">{t('calendar.valueToApply')}</label>
                     <select 
                     className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                     value={bulkValue}
                     onChange={(e) => setBulkValue(e.target.value)}
                     >
-                    <option value="0">0% (Off / Leave)</option>
-                    <option value="0.5">50% (Half Day)</option>
-                    <option value="1">100% (Working Day)</option>
-                    <option value="default">Reset to Standard</option>
+                    <option value="0">{t('calendar.offLeave')}</option>
+                    <option value="0.5">{t('calendar.halfDay')}</option>
+                    <option value="1">{t('calendar.workingDay')}</option>
+                    <option value="default">{t('calendar.resetToStandard')}</option>
                     </select>
                 </div>
                 <button 
                     type="submit"
                     className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-colors mt-2"
                 >
-                    <Check className="w-4 h-4" /> Apply Changes
+                    <Check className="w-4 h-4" /> {t('calendar.applyChanges')}
                 </button>
                 </form>
             </div>
@@ -312,7 +314,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                 */}
                 <div className="grid grid-cols-[140px_repeat(31,1fr)] gap-px bg-slate-200 border border-slate-200 shadow-sm">
                     {/* Header Row */}
-                    <div className="bg-slate-100 p-2 font-semibold text-xs text-slate-500 sticky top-0 left-0 z-20 shadow-sm text-center">Month</div>
+                    <div className="bg-slate-100 p-2 font-semibold text-xs text-slate-500 sticky top-0 left-0 z-20 shadow-sm text-center">{t('calendar.month')}</div>
                     {Array.from({ length: 31 }, (_, i) => (
                         <div key={i} className="bg-slate-50 p-2 text-center text-xs font-semibold text-slate-500 sticky top-0 z-10">
                             {i + 1}
@@ -341,13 +343,13 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                                                 : 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
                                             }
                                         `}
-                                        title="Double-click to toggle mode"
+                                        title={t('calendar.doubleClickHint')}
                                     >
                                         <span className="text-[10px] font-bold whitespace-nowrap">
                                             {statsMode === 'days' ? (
                                                 <div className="flex items-center gap-1">
                                                     <Calculator className="w-3 h-3" />
-                                                    {monthlyStatsVal} days
+                                                    {t('calendar.daysInYear', { days: monthlyStatsVal })}
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-1">
@@ -374,7 +376,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                                             <div 
                                                 key={dayIndex}
                                                 className="bg-slate-50 border-white relative h-10 flex items-center justify-center cursor-not-allowed overflow-hidden"
-                                                title="Not employed during this period"
+                                                title={t('calendar.notEmployed')}
                                                 style={{
                                                   backgroundImage: 'repeating-linear-gradient(45deg, #f8fafc, #f8fafc 10px, #f1f5f9 10px, #f1f5f9 20px)'
                                                 }}
@@ -412,8 +414,8 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                                                 ${!isReadOnly ? 'hover:z-10 hover:ring-2 hover:ring-blue-500' : 'cursor-default'}
                                                 ${bgClass}
                                             `}
-                                            title={`${formatDateDisplay(format(currentDate, 'yyyy-MM-dd'))}: ${val * 100}% ${isHoliday ? '(Holiday)' : ''}`}
-                                            aria-label={`${format(currentDate, 'dd/MM/yyyy')}: ${val * 100}%${isHoliday ? ' (Férié)' : ''}`}
+                                            title={`${formatDateDisplay(format(currentDate, 'yyyy-MM-dd'))}: ${val * 100}% ${isHoliday ? `(${t('calendar.holiday')})` : ''}`}
+                                            aria-label={`${format(currentDate, 'dd/MM/yyyy')}: ${val * 100}%${isHoliday ? ` (${t('calendar.holiday')})` : ''}`}
                                             disabled={isReadOnly}
                                         >
                                             <span className={`text-[10px] font-bold ${isWknd || val === 0 ? 'text-slate-500' : 'text-slate-700'}`}>
@@ -424,7 +426,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
 
                                             {/* Dot Override Indicator */}
                                             {overrideActive && (
-                                                <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-blue-600 rounded-full z-20 shadow-sm" title="Manual Override Active" />
+                                                <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-blue-600 rounded-full z-20 shadow-sm" title={t('calendar.manualOverride')} />
                                             )}
                                         </button>
                                     );

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Lock } from 'lucide-react';
 import { BudgetEnvelope } from '@/types';
 import BudgetKPIs from './BudgetKPIs';
@@ -14,7 +15,7 @@ interface BudgetViewProps {
 }
 
 export default function BudgetView({ envelopes, onAdd, onUpdate, onDelete, isReadOnly = false }: BudgetViewProps) {
-  
+  const { t } = useTranslation();
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const editingEnvelope = useMemo(() => 
@@ -51,8 +52,8 @@ export default function BudgetView({ envelopes, onAdd, onUpdate, onDelete, isRea
         {isReadOnly && (
             <div className="bg-slate-50 rounded-xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center text-slate-400">
                 <Lock className="w-12 h-12 mb-3 text-slate-300" />
-                <h3 className="font-medium text-slate-600">Modification Verrouillée</h3>
-                <p className="text-sm mt-1 max-w-xs">Vous consultez une version archivée ou publiée (MASTER). Passez sur un DRAFT pour éditer.</p>
+                <h3 className="font-medium text-slate-600">{t('budget.locked')}</h3>
+                <p className="text-sm mt-1 max-w-xs">{t('budget.lockedMessage')}</p>
             </div>
         )}
       </div>

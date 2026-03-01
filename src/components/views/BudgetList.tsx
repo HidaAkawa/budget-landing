@@ -1,5 +1,6 @@
 
 
+import { useTranslation } from 'react-i18next';
 import { Edit2, Trash2 } from 'lucide-react';
 import { BudgetEnvelope, EnvelopeType } from '@/types';
 
@@ -15,20 +16,21 @@ interface BudgetListProps {
 }
 
 export default function BudgetList({ envelopes, onEdit, onDelete, editingId, isReadOnly = false }: BudgetListProps) {
+  const { t } = useTranslation();
   return (
     <div className={`${isReadOnly ? 'lg:col-span-3' : 'lg:col-span-2'} bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col`}>
       <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-        <h3 className="font-semibold text-slate-800">Envelopes Definition</h3>
-        <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium">{envelopes.length} items</span>
+        <h3 className="font-semibold text-slate-800">{t('budget.envelopesDefinition')}</h3>
+        <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium">{t('budget.items', { count: envelopes.length })}</span>
       </div>
       <div className="overflow-x-auto flex-1">
         <table className="w-full text-left">
           <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
             <tr>
-              <th className="px-6 py-4">Name</th>
-              <th className="px-6 py-4">Type</th>
-              <th className="px-6 py-4 text-right">Amount</th>
-              {!isReadOnly && <th className="px-6 py-4 text-center">Actions</th>}
+              <th className="px-6 py-4">{t('common.name')}</th>
+              <th className="px-6 py-4">{t('common.type')}</th>
+              <th className="px-6 py-4 text-right">{t('common.amount')}</th>
+              {!isReadOnly && <th className="px-6 py-4 text-center">{t('common.actions')}</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -53,14 +55,14 @@ export default function BudgetList({ envelopes, onEdit, onDelete, editingId, isR
                         <button 
                         onClick={() => onEdit(env)}
                         className="text-slate-400 hover:text-blue-600 p-1"
-                        title="Edit"
+                        title={t('common.edit')}
                         >
                         <Edit2 className="w-4 h-4" />
                         </button>
                         <button 
                         onClick={() => onDelete(env.id)}
                         className="text-slate-400 hover:text-red-500 p-1"
-                        title="Delete"
+                        title={t('common.delete')}
                         >
                         <Trash2 className="w-4 h-4" />
                         </button>

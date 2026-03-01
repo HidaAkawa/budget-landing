@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Edit2, Globe, Check } from 'lucide-react';
 import { CalendarTemplate, Country } from '@/types';
 
@@ -10,6 +11,7 @@ interface CalendarTemplateFormProps {
 }
 
 export default function CalendarTemplateForm({ onAdd, onUpdate, onCancelEdit, editingTemplate }: CalendarTemplateFormProps) {
+    const { t } = useTranslation();
     const [name, setName] = useState('');
     const [country, setCountry] = useState<Country>(Country.FR);
     const [isDefault, setIsDefault] = useState(false);
@@ -61,31 +63,31 @@ export default function CalendarTemplateForm({ onAdd, onUpdate, onCancelEdit, ed
                 {editingTemplate ? (
                     <>
                         <Edit2 className="w-4 h-4 text-blue-600" />
-                        Edit Template
+                        {t('templates.editTemplate')}
                     </>
                 ) : (
                     <>
                         <Plus className="w-4 h-4 text-brand-600" />
-                        New Template
+                        {t('templates.newTemplate')}
                     </>
                 )}
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Template Name</label>
-                    <input 
-                        type="text" 
-                        required 
-                        value={name} 
-                        onChange={e => setName(e.target.value)} 
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" 
-                        placeholder="e.g. France Standard" 
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{t('templates.templateName')}</label>
+                    <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"
+                        placeholder={t('templates.templateNamePlaceholder')}
                     />
                 </div>
 
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Globe className="w-3 h-3"/> Country</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Globe className="w-3 h-3"/> {t('common.country')}</label>
                     <select 
                         value={country} 
                         onChange={e => setCountry(e.target.value as Country)} 
@@ -102,22 +104,22 @@ export default function CalendarTemplateForm({ onAdd, onUpdate, onCancelEdit, ed
                         </div>
                         <input type="checkbox" className="hidden" checked={isDefault} onChange={e => setIsDefault(e.target.checked)} />
                         <div>
-                            <span className="block text-sm font-medium text-slate-700">Set as Default</span>
-                            <span className="block text-xs text-slate-400">Default for {country}</span>
+                            <span className="block text-sm font-medium text-slate-700">{t('templates.setAsDefault')}</span>
+                            <span className="block text-xs text-slate-400">{t('templates.defaultFor', { country })}</span>
                         </div>
                     </label>
                 </div>
 
                 <div className="flex gap-2 mt-4 pt-2 border-t border-slate-100">
                     {editingTemplate && (
-                        <button type="button" onClick={onCancelEdit} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 rounded-lg text-sm transition-colors">Cancel</button>
+                        <button type="button" onClick={onCancelEdit} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 rounded-lg text-sm transition-colors">{t('common.cancel')}</button>
                     )}
                     <button 
                         type="submit" 
                         disabled={isSubmitting}
                         className={`flex-1 font-medium py-2 rounded-lg text-sm transition-colors text-white disabled:opacity-50 ${editingTemplate ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-900 hover:bg-slate-800'}`}
                     >
-                        {isSubmitting ? 'Saving...' : (editingTemplate ? 'Update' : 'Add Template')}
+                        {isSubmitting ? t('common.saving') : (editingTemplate ? t('common.update') : t('templates.addTemplate'))}
                     </button>
                 </div>
             </form>

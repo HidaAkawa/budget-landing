@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PieChart, ShieldCheck, TrendingUp } from 'lucide-react';
 import { BudgetEnvelope, EnvelopeType } from '@/types';
 
@@ -10,7 +11,7 @@ interface BudgetKPIsProps {
 }
 
 export default function BudgetKPIs({ envelopes }: BudgetKPIsProps) {
-  
+  const { t } = useTranslation();
   // Computed Totals
   const stats = useMemo(() => {
     const totalRun = envelopes.filter(e => e.type === EnvelopeType.RUN).reduce((sum, e) => sum + e.amount, 0);
@@ -26,7 +27,7 @@ export default function BudgetKPIs({ envelopes }: BudgetKPIsProps) {
           <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
             <PieChart className="w-6 h-6" />
           </div>
-          <h3 className="text-slate-500 font-medium">Total Budget</h3>
+          <h3 className="text-slate-500 font-medium">{t('budget.totalBudget')}</h3>
         </div>
         <p className="text-3xl font-bold text-slate-800">{formatCurrency(stats.total)}</p>
       </div>
@@ -36,7 +37,7 @@ export default function BudgetKPIs({ envelopes }: BudgetKPIsProps) {
           <div className="p-3 bg-orange-50 text-orange-600 rounded-lg">
             <ShieldCheck className="w-6 h-6" />
           </div>
-          <h3 className="text-slate-500 font-medium">Total RUN</h3>
+          <h3 className="text-slate-500 font-medium">{t('budget.totalRun')}</h3>
         </div>
         <p className="text-3xl font-bold text-slate-800">{formatCurrency(stats.totalRun)}</p>
         <div className="flex items-center gap-2 mt-2">
@@ -52,7 +53,7 @@ export default function BudgetKPIs({ envelopes }: BudgetKPIsProps) {
           <div className="p-3 bg-purple-50 text-purple-600 rounded-lg">
             <TrendingUp className="w-6 h-6" />
           </div>
-          <h3 className="text-slate-500 font-medium">Total CHANGE</h3>
+          <h3 className="text-slate-500 font-medium">{t('budget.totalChange')}</h3>
         </div>
         <p className="text-3xl font-bold text-slate-800">{formatCurrency(stats.totalChange)}</p>
         <div className="flex items-center gap-2 mt-2">

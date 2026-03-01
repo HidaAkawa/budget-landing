@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CalendarTemplate, ContractType, Resource, OverrideValue } from '@/types';
 import { calendarService } from '@/src/services/calendarService';
 import ConfirmModal from '@/src/components/ui/ConfirmModal';
@@ -7,6 +8,7 @@ import CalendarTemplateForm from './CalendarTemplateForm';
 import ResourceCalendar from '@/src/components/views/ResourceCalendar';
 
 export default function CalendarTemplatesManager() {
+    const { t } = useTranslation();
     const [templates, setTemplates] = useState<CalendarTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -149,10 +151,10 @@ export default function CalendarTemplatesManager() {
              <header className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between shrink-0">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                        Calendar Templates
+                        {t('templates.title')}
                     </h1>
                     <p className="text-slate-500 mt-1 text-sm">
-                        Manage standard holidays and leaves presets for your resources.
+                        {t('templates.subtitle')}
                     </p>
                 </div>
             </header>
@@ -160,7 +162,7 @@ export default function CalendarTemplatesManager() {
             <div className="flex-1 overflow-auto">
                 <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 max-w-[1920px] mx-auto">
                     {loading ? (
-                         <div className="lg:col-span-4 text-center py-20 text-slate-400">Loading templates...</div>
+                         <div className="lg:col-span-4 text-center py-20 text-slate-400">{t('templates.loadingTemplates')}</div>
                     ) : (
                         <>
                             <CalendarTemplateList 
@@ -186,9 +188,9 @@ export default function CalendarTemplatesManager() {
                 isOpen={!!templateToDelete}
                 onClose={() => setTemplateToDelete(null)}
                 onConfirm={handleDelete}
-                title="Delete Template?"
-                description={`Are you sure you want to delete "${templateToDelete?.name}"? This action cannot be undone.`}
-                confirmLabel="Delete"
+                title={t('templates.deleteConfirm')}
+                description={t('templates.deleteConfirmMessage', { name: templateToDelete?.name })}
+                confirmLabel={t('common.delete')}
                 isDestructive={true}
             />
         </div>

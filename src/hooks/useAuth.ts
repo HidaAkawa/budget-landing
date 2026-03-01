@@ -3,6 +3,7 @@ import { User, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/aut
 import { toast } from 'sonner';
 import { auth, googleProvider } from '@/src/services/firebase';
 import { userService, UserRole } from '@/src/services/userService';
+import i18n from '@/src/i18n';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -24,13 +25,13 @@ export function useAuth() {
             setIsAuthorized(true);
           } else {
             // Bootstrap: Auto-add admin from env variable on first login
-            const bootstrapAdmins = (process.env.VITE_BOOTSTRAP_ADMINS || '').split(',').map(e => e.trim()).filter(Boolean);
+            const bootstrapAdmins = (import.meta.env.VITE_BOOTSTRAP_ADMINS || '').split(',').map(e => e.trim()).filter(Boolean);
             if (bootstrapAdmins.includes(currentUser.email)) {
               try {
                 await userService.addUser(currentUser.email, 'ADMIN', 'SYSTEM_BOOTSTRAP');
                 setUserRole('ADMIN');
                 setIsAuthorized(true);
-                toast.success('Compte administrateur initialisé dans la base de données.');
+                toast.success(i18n.t('app.adminBootstrapSuccess'));
               } catch (_e) {
                 const r = await userService.getUserRole(currentUser.email);
                 if (r) { setIsAuthorized(true); setUserRole(r); }
@@ -60,14 +61,14 @@ export function useAuth() {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error('Error signing in with Google', error);
-      toast.error('Erreur lors de la connexion avec Google.');
+      toast.error(i18n.t('app.loginError'));
     }
   }, []);
 
   const handleLogout = useCallback(async () => {
     try {
       await signOut(auth);
-      toast.success('Déconnexion réussie.');
+      toast.success(i18n.t('app.logoutSuccess'));
     } catch (error) {
       console.error('Error signing out', error);
     }

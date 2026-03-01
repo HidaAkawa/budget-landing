@@ -9,14 +9,10 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Check if the user email matches the document ID (if we used email as ID)
-    // or simply check if the user exists in the authorized_users collection
+    // Check if the user exists in the authorized_users whitelist
     function isAuthorized() {
-      return isAuthenticated() && 
-        exists(/databases/$(database)/documents/authorized_users/$(request.auth.token.email)) ||
-        // FAILSAFE: Allow read if checking access (to bootstrap)
-        // But better: relying on the fact that we can read the specific doc below.
-        false;
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/authorized_users/$(request.auth.token.email));
     }
 
     // Check if user is Admin (fetching the user doc)
@@ -29,39 +25,25 @@ service cloud.firestore {
 
     // --- RULES ---
 
-    // 1. Authorized Users Collection (The IAM itself)
-    // Anyone auth can read to check if THEY are authorized (or admins can read all)
-    // Only Admin can write.
+    // 1. IAM — Users can only read their own entry; Admins can read all (for the admin UI).
     match /authorized_users/{userId} {
-      allow read: if isAuthenticated(); // Broad read allowed so App can check "am I authorized?" by querying list? 
-      // Better: Allow read if userId == request.auth.token.email OR isAdmin()
-      // But for the List UI, Admins need to list all.
-      // Let's keep it simple for now: Authenticated users can read the whitelist (internal app transparency).
-      
-      allow write: if isAdmin(); // Only Admins can add/remove users.
-      // BOOTSTRAP EXCEPTION (Optional): Allow write if collection is empty? No, hard to do safely.
-      // relying on App.tsx logic is client-side only. 
-      // For the very first deploy, you might need to add the first user manually in Console OR open this rule temporarily.
-      // I will leave it STRICT (Admin only).
+      allow read: if isAuthenticated() && (userId == request.auth.token.email || isAdmin());
+      allow write: if isAdmin();
     }
 
-    // 2. Business Data (Scenarios, Resources)
+    // 2. Business Data (Scenarios, Resources) — Authorized users only.
     match /scenarios/{scenarioId} {
-      // Only authorized users can access the app data
-      // And strict ownership: Only owner can see their drafts? 
-      // Or shared visibility?
-      // Based on App.tsx: "where ownerId == userId". So users only see their own stuff.
-      allow read, write: if isAuthenticated(); // TODO: Add isAuthorized() check when DB is populated.
-      
+      allow read, write: if isAuthorized();
+
       match /resources/{resourceId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isAuthorized();
       }
     }
 
-    // 3. Templates
+    // 3. Templates — Read: any authorized user. Write: Admin only (global shared resource).
     match /calendar_templates/{templateId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated(); // Anyone can edit templates? Or only Admin? Let's say anyone for now.
+      allow read: if isAuthorized();
+      allow write: if isAdmin();
     }
     
     // 4. Health Check

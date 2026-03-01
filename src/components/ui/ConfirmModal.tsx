@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 
 interface ConfirmModalProps {
@@ -17,10 +18,15 @@ export default function ConfirmModal({
   onConfirm,
   title,
   description,
-  confirmLabel = 'Confirmer',
-  cancelLabel = 'Annuler',
+  confirmLabel,
+  cancelLabel,
   isDestructive = false
 }: ConfirmModalProps) {
+  const { t } = useTranslation();
+
+  const resolvedConfirmLabel = confirmLabel ?? t('common.confirm');
+  const resolvedCancelLabel = cancelLabel ?? t('common.cancel');
+
   if (!isOpen) return null;
 
   return (
@@ -53,7 +59,7 @@ export default function ConfirmModal({
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-colors"
           >
-            {cancelLabel}
+            {resolvedCancelLabel}
           </button>
           <button
             onClick={() => {
@@ -66,7 +72,7 @@ export default function ConfirmModal({
                 : 'bg-brand-600 hover:bg-brand-700 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2'
             }`}
           >
-            {confirmLabel}
+            {resolvedConfirmLabel}
           </button>
         </div>
       </div>

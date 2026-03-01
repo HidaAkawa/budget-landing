@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TrendingDown, TrendingUp, AlertCircle, CheckCircle, PieChart, Wallet } from 'lucide-react';
 import { BudgetEnvelope, EnvelopeType, Resource } from '@/types';
 import { startOfYear, endOfYear, eachDayOfInterval } from 'date-fns';
 import { calculateDayStatus } from '@/utils';
 
 const formatCurrency = (val: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
-const formatCompact = (val: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 1, notation: "compact" }).format(val);
+const formatCompact = (val: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 1, notation: "compact" }).format(val).replace(/\s+€/, '€');
 
 interface DashboardViewProps {
   envelopes: BudgetEnvelope[];
@@ -13,6 +14,7 @@ interface DashboardViewProps {
 }
 
 export default function DashboardView({ envelopes, resources }: DashboardViewProps) {
+  const { t } = useTranslation();
   const currentYear = new Date().getFullYear();
 
   // --- Calculation Logic ---
@@ -104,24 +106,24 @@ export default function DashboardView({ envelopes, resources }: DashboardViewPro
                     <h3 className="font-semibold text-slate-700">{title}</h3>
                 </div>
                 <div className={`text-xs font-bold px-2 py-1 rounded border ${isOverBudget ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
-                    {isOverBudget ? 'OVER BUDGET' : 'ON TRACK'}
+                    {isOverBudget ? t('dashboard.overBudget') : t('dashboard.onTrack')}
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Budget</p>
+                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t('dashboard.budget')}</p>
                     <p className="text-xl font-bold text-slate-800">{formatCompact(budget)}</p>
                 </div>
                 <div>
-                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Forecast</p>
+                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t('dashboard.forecast')}</p>
                     <p className={`text-xl font-bold ${isOverBudget ? 'text-red-600' : 'text-slate-800'}`}>{formatCompact(forecast)}</p>
                 </div>
             </div>
 
             <div className="mt-auto">
                 <div className="flex justify-between text-xs mb-1">
-                    <span className="font-medium text-slate-600">Consumption</span>
+                    <span className="font-medium text-slate-600">{t('dashboard.consumption')}</span>
                     <span className={`font-bold ${isOverBudget ? 'text-red-600' : 'text-slate-600'}`}>{percent.toFixed(1)}%</span>
                 </div>
                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -132,7 +134,7 @@ export default function DashboardView({ envelopes, resources }: DashboardViewPro
                 </div>
                 <div className="mt-3 flex items-center gap-2 text-sm">
                     {delta >= 0 ? <TrendingUp className="w-4 h-4 text-green-500" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
-                    <span className="text-slate-500">Remaining:</span>
+                    <span className="text-slate-500">{t('dashboard.remaining')}</span>
                     <span className={`font-bold font-mono ${delta < 0 ? 'text-red-600' : 'text-green-600'}`}>{formatCurrency(delta)}</span>
                 </div>
             </div>
@@ -146,23 +148,23 @@ export default function DashboardView({ envelopes, resources }: DashboardViewPro
         {/* Header Section */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-                <h2 className="text-2xl font-bold text-slate-800">Financial Dashboard {currentYear}</h2>
-                <p className="text-slate-500 text-sm">Real-time overview of budget vs. resource allocation.</p>
+                <h2 className="text-2xl font-bold text-slate-800">{t('dashboard.title', { year: currentYear })}</h2>
+                <p className="text-slate-500 text-sm">{t('dashboard.subtitle')}</p>
             </div>
             
             <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex items-center gap-6">
                  <div className="text-right">
-                    <p className="text-xs text-slate-400 font-bold uppercase">Total Budget</p>
+                    <p className="text-xs text-slate-400 font-bold uppercase">{t('dashboard.totalBudget')}</p>
                     <p className="font-bold text-slate-800">{formatCompact(stats.budgetTotal)}</p>
                  </div>
                  <div className="h-8 w-px bg-slate-100"></div>
                  <div className="text-right">
-                    <p className="text-xs text-slate-400 font-bold uppercase">Total Forecast</p>
+                    <p className="text-xs text-slate-400 font-bold uppercase">{t('dashboard.totalForecast')}</p>
                     <p className="font-bold text-blue-600">{formatCompact(stats.forecastTotal)}</p>
                  </div>
                  <div className="h-8 w-px bg-slate-100"></div>
                  <div className="text-right">
-                    <p className="text-xs text-slate-400 font-bold uppercase">Net Result</p>
+                    <p className="text-xs text-slate-400 font-bold uppercase">{t('dashboard.netResult')}</p>
                     <p className={`font-bold ${stats.deltaTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCompact(stats.deltaTotal)}</p>
                  </div>
             </div>
@@ -174,7 +176,7 @@ export default function DashboardView({ envelopes, resources }: DashboardViewPro
                 <div>
                     <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                         <Wallet className="w-5 h-5 text-slate-500" />
-                        Global Consumption
+                        {t('dashboard.globalConsumption')}
                     </h3>
                 </div>
                 <div className="text-3xl font-bold text-slate-800">
@@ -207,7 +209,7 @@ export default function DashboardView({ envelopes, resources }: DashboardViewPro
         {/* Split View: RUN vs CHANGE */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <SummaryCard 
-                title="RUN (Maintenance)" 
+                title={t('dashboard.runMaintenance')} 
                 budget={stats.budgetRun}
                 forecast={stats.forecastRun}
                 delta={stats.deltaRun}
@@ -217,7 +219,7 @@ export default function DashboardView({ envelopes, resources }: DashboardViewPro
                 icon={PieChart}
             />
             <SummaryCard 
-                title="CHANGE (Projects)" 
+                title={t('dashboard.changeProjects')} 
                 budget={stats.budgetChange}
                 forecast={stats.forecastChange}
                 delta={stats.deltaChange}
@@ -233,8 +235,8 @@ export default function DashboardView({ envelopes, resources }: DashboardViewPro
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                 <div>
-                    <h4 className="font-semibold text-red-800 text-sm">Critical Budget Alert</h4>
-                    <p className="text-red-600 text-xs mt-1">You have consumed over 95% of your total budget. Please review upcoming resource allocations or request a budget extension.</p>
+                    <h4 className="font-semibold text-red-800 text-sm">{t('dashboard.criticalAlert')}</h4>
+                    <p className="text-red-600 text-xs mt-1">{t('dashboard.criticalAlertMessage')}</p>
                 </div>
             </div>
         )}
@@ -243,9 +245,9 @@ export default function DashboardView({ envelopes, resources }: DashboardViewPro
              <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                 <div>
-                    <h4 className="font-semibold text-green-800 text-sm">Healthy Financial Status</h4>
+                    <h4 className="font-semibold text-green-800 text-sm">{t('dashboard.healthyStatus')}</h4>
                     <p className="text-green-600 text-xs mt-1">
-                        You have {formatCompact(stats.deltaTotal)} remaining available. You can safely allocate more resources to CHANGE projects.
+                        {t('dashboard.healthyStatusMessage', { amount: formatCompact(stats.deltaTotal) })}
                     </p>
                 </div>
             </div>
