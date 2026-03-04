@@ -11,7 +11,7 @@ export default function CalendarTemplatesManager() {
     const { t } = useTranslation();
     const [templates, setTemplates] = useState<CalendarTemplate[]>([]);
     const [loading, setLoading] = useState(true);
-    
+
     // View States
     const [calendarTemplateId, setCalendarTemplateId] = useState<string | null>(null);
     const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -34,13 +34,13 @@ export default function CalendarTemplatesManager() {
     }, []);
 
     // Derived States
-    const editingTemplate = useMemo(() => 
+    const editingTemplate = useMemo(() =>
         templates.find(t => t.id === editingTemplateId) || null
-    , [templates, editingTemplateId]);
+        , [templates, editingTemplateId]);
 
-    const activeCalendarTemplate = useMemo(() => 
+    const activeCalendarTemplate = useMemo(() =>
         templates.find(t => t.id === calendarTemplateId) || null
-    , [templates, calendarTemplateId]);
+        , [templates, calendarTemplateId]);
 
     // MOCK RESOURCE for Calendar View
     const mockResource = useMemo<Resource | null>(() => {
@@ -73,13 +73,13 @@ export default function CalendarTemplatesManager() {
     const handleUpdate = async (id: string, updates: Partial<CalendarTemplate>) => {
         // Optimistic UI
         setTemplates(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-        
+
         await calendarService.updateTemplate(id, updates);
-        
+
         // Refresh if isDefault changed (to handle unchecking others)
         if (updates.isDefault !== undefined) {
-             const data = await calendarService.getAllTemplates();
-             setTemplates(data);
+            const data = await calendarService.getAllTemplates();
+            setTemplates(data);
         }
     };
 
@@ -97,7 +97,7 @@ export default function CalendarTemplatesManager() {
         if (!activeCalendarTemplate) return;
         const newOverrides = { ...activeCalendarTemplate.overrides };
         if (value === undefined) delete newOverrides[date]; else newOverrides[date] = value;
-        
+
         await handleUpdate(activeCalendarTemplate.id, { overrides: newOverrides });
     };
 
@@ -118,8 +118,8 @@ export default function CalendarTemplatesManager() {
         const newOverrides = { ...activeCalendarTemplate.overrides };
         holidays.forEach(date => newOverrides[date] = 0);
         const newDynamicHolidays = [...new Set([...(activeCalendarTemplate.dynamicHolidays || []), ...holidays])];
-        
-        await handleUpdate(activeCalendarTemplate.id, { 
+
+        await handleUpdate(activeCalendarTemplate.id, {
             overrides: newOverrides,
             dynamicHolidays: newDynamicHolidays
         });
@@ -128,7 +128,7 @@ export default function CalendarTemplatesManager() {
     // --- FULL SCREEN CALENDAR MODE ---
     if (mockResource) {
         return (
-            <ResourceCalendar 
+            <ResourceCalendar
                 resource={mockResource}
                 onBack={() => setCalendarTemplateId(null)}
                 onUpdateOverride={handleUpdateOverride}
@@ -148,7 +148,7 @@ export default function CalendarTemplatesManager() {
     // --- LIST MODE ---
     return (
         <div className="h-full flex flex-col bg-slate-50">
-             <header className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between shrink-0">
+            <header className="bg-white border-b border-slate-200 px-4 md:px-8 py-5 flex items-center justify-between shrink-0">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
                         {t('templates.title')}
@@ -162,10 +162,10 @@ export default function CalendarTemplatesManager() {
             <div className="flex-1 overflow-auto">
                 <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 max-w-[1920px] mx-auto">
                     {loading ? (
-                         <div className="lg:col-span-4 text-center py-20 text-slate-400">{t('templates.loadingTemplates')}</div>
+                        <div className="lg:col-span-4 text-center py-20 text-slate-400">{t('templates.loadingTemplates')}</div>
                     ) : (
                         <>
-                            <CalendarTemplateList 
+                            <CalendarTemplateList
                                 templates={templates}
                                 onEdit={(t) => setEditingTemplateId(t.id)}
                                 onDelete={(t, e) => { e.stopPropagation(); setTemplateToDelete(t); }}
@@ -173,7 +173,7 @@ export default function CalendarTemplatesManager() {
                                 editingId={editingTemplateId}
                             />
 
-                            <CalendarTemplateForm 
+                            <CalendarTemplateForm
                                 onAdd={handleAdd}
                                 onUpdate={handleUpdate}
                                 onCancelEdit={() => setEditingTemplateId(null)}
@@ -184,7 +184,7 @@ export default function CalendarTemplatesManager() {
                 </div>
             </div>
 
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={!!templateToDelete}
                 onClose={() => setTemplateToDelete(null)}
                 onConfirm={handleDelete}

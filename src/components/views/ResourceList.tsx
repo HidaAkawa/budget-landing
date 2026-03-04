@@ -14,17 +14,17 @@ const formatDateDisplay = (dateStr: string) => {
 };
 
 interface ResourceListProps {
-  resources: Resource[];
-  onEdit: (resource: Resource) => void;
-  onDelete: (id: string) => void;
-  onCalendarClick: (id: string) => void;
-  editingId: string | null;
-  isReadOnly?: boolean;
-  bulkEditMode?: boolean;
-  onToggleBulkEdit?: () => void;
-  selectedIds?: Set<string>;
-  onToggleSelect?: (id: string) => void;
-  onToggleSelectAll?: () => void;
+    resources: Resource[];
+    onEdit: (resource: Resource) => void;
+    onDelete: (id: string) => void;
+    onCalendarClick: (id: string) => void;
+    editingId: string | null;
+    isReadOnly?: boolean;
+    bulkEditMode?: boolean;
+    onToggleBulkEdit?: () => void;
+    selectedIds?: Set<string>;
+    onToggleSelect?: (id: string) => void;
+    onToggleSelectAll?: () => void;
 }
 
 type SortKey = keyof Resource | 'stats.days' | 'stats.cost';
@@ -61,298 +61,358 @@ const ResourceRow = React.memo(({ resource, currentYear, isEditing, isReadOnly, 
         }
     };
 
-    return (
-        <div
-            onClick={handleRowClick}
-            className={`flex items-center border-b border-slate-100 transition-colors group ${
-                bulkEditMode ? 'cursor-pointer' : ''
-            } ${isSelected ? 'bg-brand-50/60' : 'hover:bg-slate-50'} ${isEditing && !bulkEditMode ? 'bg-blue-50/50' : ''}`}
-        >
-            {/* Checkbox column */}
-            {bulkEditMode && (
-                <div className="pl-4 shrink-0 animate-in fade-in slide-in-from-left-2 duration-200">
-                    <input
-                        type="checkbox"
-                        checked={!!isSelected}
-                        onChange={() => onToggleSelect?.(resource.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
-                    />
-                </div>
+    const costFormatted = new Intl.NumberFormat('fr-FR', { notation: "compact", maximumFractionDigits: 1, style: 'currency', currency: 'EUR' }).format(stats.cost).replace(/\s+€/, '€');
+
+    const actionButtons = (
+        <>
+            <button
+                onClick={(e) => { e.stopPropagation(); onCalendarClick(resource.id); }}
+                className="text-slate-400 hover:text-purple-600 hover:bg-purple-50 p-1.5 rounded transition-colors"
+                title={t('resources.manageCalendar')}
+                aria-label={t('templates.openCalendar')}
+            >
+                <CalendarIcon className="w-4 h-4" />
+            </button>
+            {!isReadOnly && (
+                <>
+                    <button onClick={(e) => { e.stopPropagation(); onEdit(resource); }} className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors" aria-label={t('resources.editResourceAction')}><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); onDelete(resource.id); }} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors" aria-label={t('resources.deleteResource')}><Trash2 className="w-4 h-4" /></button>
+                </>
             )}
-             <div className={`flex-1 min-w-0 px-4 py-3 ${gridClass}`}>
-                 {/* 1. Name */}
-                 <div className="min-w-0">
-                    <div className="font-medium text-slate-800 truncate" title={`${resource.firstName} ${resource.lastName}`}>{resource.firstName} {resource.lastName}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5 flex gap-1 items-center">
-                        <CalendarRange className="w-3 h-3 shrink-0" />
-                        <span className="truncate">{formatDateDisplay(resource.startDate)} → {formatDateDisplay(resource.endDate)}</span>
+        </>
+    );
+
+    return (
+        <>
+            {/* === MOBILE CARD VIEW (< lg) === */}
+            <div
+                onClick={handleRowClick}
+                className={`lg:hidden border-b border-slate-100 p-4 transition-colors ${bulkEditMode ? 'cursor-pointer' : ''
+                    } ${isSelected ? 'bg-brand-50/60' : 'hover:bg-slate-50'} ${isEditing && !bulkEditMode ? 'bg-blue-50/50' : ''}`}
+            >
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                        {bulkEditMode && (
+                            <input
+                                type="checkbox"
+                                checked={!!isSelected}
+                                onChange={() => onToggleSelect?.(resource.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-4 h-4 mt-1 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer shrink-0"
+                            />
+                        )}
+                        <div className="min-w-0">
+                            <div className="font-medium text-slate-800 truncate">{resource.firstName} {resource.lastName}</div>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                {resource.tribe && (
+                                    <span className="flex items-center gap-1 text-[10px] text-slate-500">
+                                        <Users className="w-3 h-3 shrink-0" />
+                                        {resource.tribe}
+                                    </span>
+                                )}
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold border ${resource.contractType === 'INTERNAL' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                                        resource.contractType === 'EXTERNAL' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                            'bg-slate-100 text-slate-600 border-slate-200'
+                                    }`}>{resource.contractType || 'EXT'}</span>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">{resource.country}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                        {actionButtons}
                     </div>
                 </div>
-
-                {/* 2. Tribe */}
-                <div className="min-w-0">
-                    {resource.tribe ? (
-                        <div className="flex items-center gap-1 text-xs text-slate-600 truncate" title={resource.tribe}>
-                            <Users className="w-3 h-3 shrink-0 text-slate-400" />
-                            {resource.tribe}
-                        </div>
-                    ) : (
-                        <span className="text-slate-300 text-[10px]">-</span>
-                    )}
-                </div>
-
-                {/* 3. Contract */}
-                <div>
-                     <span className={`inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold border ${
-                         resource.contractType === 'INTERNAL' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                         resource.contractType === 'EXTERNAL' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                         'bg-slate-100 text-slate-600 border-slate-200'
-                     }`}>
-                        {resource.contractType || 'EXT'}
-                    </span>
-                </div>
-
-                {/* 4. Country */}
-                <div>
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                        {resource.country}
-                    </span>
-                </div>
-
-                {/* 5. TJM */}
-                <div className="text-right font-mono text-xs text-slate-600">
-                     {formatCurrency(resource.tjm)}
-                </div>
-
-                {/* 6. Days */}
-                <div className="text-center">
-                    <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
-                        {stats.days}
-                    </span>
-                </div>
-
-                {/* 7. Cost */}
-                <div className="text-right">
-                    <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100 font-mono">
-                        {new Intl.NumberFormat('fr-FR', { notation: "compact", maximumFractionDigits: 1, style: 'currency', currency: 'EUR' }).format(stats.cost).replace(/\s+€/, '€')}
-                    </span>
-                </div>
-
-                {/* 8. Allocation */}
-                <div className="min-w-[80px]">
-                    <div className="flex flex-col gap-1">
-                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
+                    <span className="font-mono text-slate-600">{formatCurrency(resource.tjm)}/j</span>
+                    <span className="inline-flex items-center gap-1 font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">{stats.days}j</span>
+                    <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100 font-mono">{costFormatted}</span>
+                    <div className="flex items-center gap-1.5 ml-auto">
+                        <div className="h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden flex">
                             <div className="bg-orange-400 h-full" style={{ width: `${100 - resource.ratioChange}%` }}></div>
                             <div className="bg-purple-500 h-full" style={{ width: `${resource.ratioChange}%` }}></div>
                         </div>
-                        <div className="flex justify-between text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
-                            <span>R {100 - resource.ratioChange}%</span>
-                            <span>C {resource.ratioChange}%</span>
-                        </div>
+                        <span className="text-[8px] font-bold text-slate-400">R{100 - resource.ratioChange}/C{resource.ratioChange}</span>
                     </div>
                 </div>
-
-                {/* 9. Actions */}
-                <div className="text-center flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                        onClick={() => onCalendarClick(resource.id)}
-                        className="text-slate-400 hover:text-purple-600 hover:bg-purple-50 p-1.5 rounded transition-colors flex items-center gap-1"
-                        title={t('resources.manageCalendar')}
-                        aria-label={t('templates.openCalendar')}
-                    >
-                        <CalendarIcon className="w-4 h-4" />
-                    </button>
-                    {!isReadOnly && (
-                        <>
-                            <button onClick={() => onEdit(resource)} className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors" aria-label={t('resources.editResourceAction')}><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => onDelete(resource.id)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors" aria-label={t('resources.deleteResource')}><Trash2 className="w-4 h-4" /></button>
-                        </>
-                    )}
-                </div>
-             </div>
-        </div>
-    );
-});
-
-export default function ResourceList({ resources, onEdit, onDelete, onCalendarClick, editingId, isReadOnly = false, bulkEditMode = false, onToggleBulkEdit, selectedIds, onToggleSelect, onToggleSelectAll }: ResourceListProps) {
-  const { t } = useTranslation();
-  const currentYear = new Date().getFullYear();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
-
-  // Filter & Sort Logic
-  const processedResources = useMemo(() => {
-    let filtered = resources;
-
-    // 1. Filter
-    if (searchTerm) {
-        const lowerTerm = searchTerm.toLowerCase();
-        filtered = filtered.filter(r => 
-            r.firstName.toLowerCase().includes(lowerTerm) ||
-            r.lastName.toLowerCase().includes(lowerTerm) ||
-            (r.tribe && r.tribe.toLowerCase().includes(lowerTerm))
-        );
-    }
-
-    // 2. Sort
-    if (sortConfig) {
-        filtered = [...filtered].sort((a, b) => {
-            let valA: any;
-            let valB: any;
-
-            if (sortConfig.key === 'stats.days' || sortConfig.key === 'stats.cost') {
-                const statA = getCachedResourceStats(a, currentYear);
-                const statB = getCachedResourceStats(b, currentYear);
-                valA = sortConfig.key === 'stats.days' ? statA.days : statA.cost;
-                valB = sortConfig.key === 'stats.days' ? statB.days : statB.cost;
-            } else {
-                valA = a[sortConfig.key as keyof Resource];
-                valB = b[sortConfig.key as keyof Resource];
-            }
-
-            // Handle null/undefined
-            if (valA === undefined || valA === null) valA = '';
-            if (valB === undefined || valB === null) valB = '';
-
-            if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-            if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-    }
-
-    return filtered;
-  }, [resources, searchTerm, sortConfig, currentYear]);
-
-  const handleSort = (key: SortKey) => {
-      setSortConfig(current => {
-          if (current?.key === key) {
-              return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
-          }
-          return { key, direction: 'asc' };
-      });
-  };
-
-  const SortIcon = ({ colKey }: { colKey: SortKey }) => {
-      if (sortConfig?.key !== colKey) return <ArrowUpDown className="w-3 h-3 opacity-30 group-hover:opacity-100" />;
-      return sortConfig.direction === 'asc' 
-        ? <ArrowUpDown className="w-3 h-3 text-brand-600 rotate-0 transition-transform" /> // Or ChevronUp
-        : <ArrowUpDown className="w-3 h-3 text-brand-600 rotate-180 transition-transform" />;
-  };
-
-  const HeaderCell = ({ label, sortKey, align = 'left', className = '' }: { label: string, sortKey?: SortKey, align?: 'left'|'center'|'right', className?: string }) => (
-      <div 
-        className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'} ${sortKey ? 'cursor-pointer group select-none hover:text-slate-700' : ''} ${className}`}
-        onClick={() => sortKey && handleSort(sortKey)}
-      >
-          {label}
-          {sortKey && <SortIcon colKey={sortKey} />}
-      </div>
-  );
-
-  // Same grid definition as Row
-  const gridClass = "grid grid-cols-[1.8fr_1fr_0.8fr_0.5fr_0.8fr_0.7fr_1fr_1.2fr_0.8fr] gap-3";
-
-  return (
-    <div className={`${isReadOnly ? 'lg:col-span-4' : 'lg:col-span-3'} bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-12rem)]`}>
-        {/* TOP BAR */}
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50 shrink-0">
-            <div className="flex items-center gap-3">
-                <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                    <User className="w-5 h-5 text-slate-500" />
-                    {t('resources.title')}
-                </h3>
-                <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:inline-block">{t('resources.pilotage', { year: currentYear })}</span>
-                <span className="bg-brand-100 text-brand-700 px-2 py-1 rounded text-xs font-medium">{resources.length}</span>
             </div>
-            
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-                {/* Search Bar */}
-                <div className="relative flex-1 sm:w-64">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder={t('resources.searchPlaceholder')}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-9 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                    />
-                </div>
 
-                {/* Bulk Edit Toggle */}
-                {!isReadOnly && onToggleBulkEdit && (
-                    <button
-                        onClick={onToggleBulkEdit}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                            bulkEditMode
-                                ? 'bg-brand-600 text-white hover:bg-brand-700'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                    >
-                        <ListChecks className="w-4 h-4" />
-                        {bulkEditMode ? t('resources.cancelSelection') : t('resources.bulkEdit')}
-                    </button>
-                )}
-            </div>
-        </div>
-        
-        {/* TABLE HEADER */}
-        <div className="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider shrink-0 border-b border-slate-200">
-             <div className={`flex items-center ${bulkEditMode ? '' : ''}`}>
+            {/* === DESKTOP ROW VIEW (>= lg) === */}
+            <div
+                onClick={handleRowClick}
+                className={`hidden lg:flex items-center border-b border-slate-100 transition-colors group ${bulkEditMode ? 'cursor-pointer' : ''
+                    } ${isSelected ? 'bg-brand-50/60' : 'hover:bg-slate-50'} ${isEditing && !bulkEditMode ? 'bg-blue-50/50' : ''}`}
+            >
+                {/* Checkbox column */}
                 {bulkEditMode && (
                     <div className="pl-4 shrink-0 animate-in fade-in slide-in-from-left-2 duration-200">
                         <input
                             type="checkbox"
-                            checked={selectedIds ? selectedIds.size > 0 && selectedIds.size === processedResources.length : false}
-                            ref={(el) => {
-                                if (el) el.indeterminate = (selectedIds?.size ?? 0) > 0 && (selectedIds?.size ?? 0) < processedResources.length;
-                            }}
-                            onChange={() => onToggleSelectAll?.()}
+                            checked={!!isSelected}
+                            onChange={() => onToggleSelect?.(resource.id)}
+                            onClick={(e) => e.stopPropagation()}
                             className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
                         />
                     </div>
                 )}
-             <div className={`flex-1 px-4 py-3 ${gridClass}`}>
-                 <HeaderCell label={t('common.name')} sortKey="lastName" />
-                 <HeaderCell label={t('resources.tribe')} sortKey="tribe" />
-                 <HeaderCell label={t('common.type')} sortKey="contractType" />
-                 <HeaderCell label={t('common.country')} sortKey="country" />
-                 <HeaderCell label={t('resources.tjm')} sortKey="tjm" align="right" />
-                 <HeaderCell label={t('resources.days')} sortKey="stats.days" align="center" />
-                 <HeaderCell label={t('resources.cost')} sortKey="stats.cost" align="right" />
-                 <HeaderCell label={t('resources.allocRC')} />
-                 <HeaderCell label={t('common.actions')} align="center" />
-             </div>
-             </div>
-        </div>
+                <div className={`flex-1 min-w-0 px-4 py-3 ${gridClass}`}>
+                    {/* 1. Name */}
+                    <div className="min-w-0">
+                        <div className="font-medium text-slate-800 truncate" title={`${resource.firstName} ${resource.lastName}`}>{resource.firstName} {resource.lastName}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 flex gap-1 items-center">
+                            <CalendarRange className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{formatDateDisplay(resource.startDate)} → {formatDateDisplay(resource.endDate)}</span>
+                        </div>
+                    </div>
 
-        {/* LIST CONTENT */}
-        <div className="flex-1 overflow-y-auto">
-             {processedResources.length > 0 ? (
-                <div>
-                    {processedResources.map(res => (
-                        <ResourceRow
-                            key={res.id}
-                            resource={res}
-                            currentYear={currentYear}
-                            isEditing={editingId === res.id}
-                            isReadOnly={isReadOnly}
-                            onCalendarClick={onCalendarClick}
-                            onEdit={onEdit}
-                            onDelete={onDelete}
-                            bulkEditMode={bulkEditMode}
-                            isSelected={selectedIds?.has(res.id)}
-                            onToggleSelect={onToggleSelect}
-                        />
-                    ))}
+                    {/* 2. Tribe */}
+                    <div className="min-w-0">
+                        {resource.tribe ? (
+                            <div className="flex items-center gap-1 text-xs text-slate-600 truncate" title={resource.tribe}>
+                                <Users className="w-3 h-3 shrink-0 text-slate-400" />
+                                {resource.tribe}
+                            </div>
+                        ) : (
+                            <span className="text-slate-300 text-[10px]">-</span>
+                        )}
+                    </div>
+
+                    {/* 3. Contract */}
+                    <div>
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold border ${resource.contractType === 'INTERNAL' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                                resource.contractType === 'EXTERNAL' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                    'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}>
+                            {resource.contractType || 'EXT'}
+                        </span>
+                    </div>
+
+                    {/* 4. Country */}
+                    <div>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                            {resource.country}
+                        </span>
+                    </div>
+
+                    {/* 5. TJM */}
+                    <div className="text-right font-mono text-xs text-slate-600">
+                        {formatCurrency(resource.tjm)}
+                    </div>
+
+                    {/* 6. Days */}
+                    <div className="text-center">
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
+                            {stats.days}
+                        </span>
+                    </div>
+
+                    {/* 7. Cost */}
+                    <div className="text-right">
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100 font-mono">
+                            {costFormatted}
+                        </span>
+                    </div>
+
+                    {/* 8. Allocation */}
+                    <div className="min-w-[80px]">
+                        <div className="flex flex-col gap-1">
+                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                                <div className="bg-orange-400 h-full" style={{ width: `${100 - resource.ratioChange}%` }}></div>
+                                <div className="bg-purple-500 h-full" style={{ width: `${resource.ratioChange}%` }}></div>
+                            </div>
+                            <div className="flex justify-between text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
+                                <span>R {100 - resource.ratioChange}%</span>
+                                <span>C {resource.ratioChange}%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 9. Actions */}
+                    <div className="text-center flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {actionButtons}
+                    </div>
                 </div>
-             ) : (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400 italic gap-2">
-                    <User className="w-8 h-8 opacity-20" />
-                    {searchTerm ? 'No matching resources found.' : 'No resources defined yet.'}
-                </div>
-             )}
+            </div>
+        </>
+    );
+});
+
+export default function ResourceList({ resources, onEdit, onDelete, onCalendarClick, editingId, isReadOnly = false, bulkEditMode = false, onToggleBulkEdit, selectedIds, onToggleSelect, onToggleSelectAll }: ResourceListProps) {
+    const { t } = useTranslation();
+    const currentYear = new Date().getFullYear();
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+
+    // Filter & Sort Logic
+    const processedResources = useMemo(() => {
+        let filtered = resources;
+
+        // 1. Filter
+        if (searchTerm) {
+            const lowerTerm = searchTerm.toLowerCase();
+            filtered = filtered.filter(r =>
+                r.firstName.toLowerCase().includes(lowerTerm) ||
+                r.lastName.toLowerCase().includes(lowerTerm) ||
+                (r.tribe && r.tribe.toLowerCase().includes(lowerTerm))
+            );
+        }
+
+        // 2. Sort
+        if (sortConfig) {
+            filtered = [...filtered].sort((a, b) => {
+                let valA: any;
+                let valB: any;
+
+                if (sortConfig.key === 'stats.days' || sortConfig.key === 'stats.cost') {
+                    const statA = getCachedResourceStats(a, currentYear);
+                    const statB = getCachedResourceStats(b, currentYear);
+                    valA = sortConfig.key === 'stats.days' ? statA.days : statA.cost;
+                    valB = sortConfig.key === 'stats.days' ? statB.days : statB.cost;
+                } else {
+                    valA = a[sortConfig.key as keyof Resource];
+                    valB = b[sortConfig.key as keyof Resource];
+                }
+
+                // Handle null/undefined
+                if (valA === undefined || valA === null) valA = '';
+                if (valB === undefined || valB === null) valB = '';
+
+                if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        return filtered;
+    }, [resources, searchTerm, sortConfig, currentYear]);
+
+    const handleSort = (key: SortKey) => {
+        setSortConfig(current => {
+            if (current?.key === key) {
+                return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
+            }
+            return { key, direction: 'asc' };
+        });
+    };
+
+    const SortIcon = ({ colKey }: { colKey: SortKey }) => {
+        if (sortConfig?.key !== colKey) return <ArrowUpDown className="w-3 h-3 opacity-30 group-hover:opacity-100" />;
+        return sortConfig.direction === 'asc'
+            ? <ArrowUpDown className="w-3 h-3 text-brand-600 rotate-0 transition-transform" /> // Or ChevronUp
+            : <ArrowUpDown className="w-3 h-3 text-brand-600 rotate-180 transition-transform" />;
+    };
+
+    const HeaderCell = ({ label, sortKey, align = 'left', className = '' }: { label: string, sortKey?: SortKey, align?: 'left' | 'center' | 'right', className?: string }) => (
+        <div
+            className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'} ${sortKey ? 'cursor-pointer group select-none hover:text-slate-700' : ''} ${className}`}
+            onClick={() => sortKey && handleSort(sortKey)}
+        >
+            {label}
+            {sortKey && <SortIcon colKey={sortKey} />}
         </div>
-    </div>
-  );
+    );
+
+    // Same grid definition as Row
+    const gridClass = "grid grid-cols-[1.8fr_1fr_0.8fr_0.5fr_0.8fr_0.7fr_1fr_1.2fr_0.8fr] gap-3";
+
+    return (
+        <div className={`${isReadOnly ? 'lg:col-span-4' : 'lg:col-span-3'} bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-12rem)]`}>
+            {/* TOP BAR */}
+            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50 shrink-0">
+                <div className="flex items-center gap-3">
+                    <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                        <User className="w-5 h-5 text-slate-500" />
+                        {t('resources.title')}
+                    </h3>
+                    <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:inline-block">{t('resources.pilotage', { year: currentYear })}</span>
+                    <span className="bg-brand-100 text-brand-700 px-2 py-1 rounded text-xs font-medium">{resources.length}</span>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {/* Search Bar */}
+                    <div className="relative flex-1 sm:w-64">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder={t('resources.searchPlaceholder')}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-9 pr-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                        />
+                    </div>
+
+                    {/* Bulk Edit Toggle */}
+                    {!isReadOnly && onToggleBulkEdit && (
+                        <button
+                            onClick={onToggleBulkEdit}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${bulkEditMode
+                                    ? 'bg-brand-600 text-white hover:bg-brand-700'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                }`}
+                        >
+                            <ListChecks className="w-4 h-4" />
+                            {bulkEditMode ? t('resources.cancelSelection') : t('resources.bulkEdit')}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* TABLE HEADER — hidden on mobile */}
+            <div className="hidden lg:block bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider shrink-0 border-b border-slate-200">
+                <div className={`flex items-center ${bulkEditMode ? '' : ''}`}>
+                    {bulkEditMode && (
+                        <div className="pl-4 shrink-0 animate-in fade-in slide-in-from-left-2 duration-200">
+                            <input
+                                type="checkbox"
+                                checked={selectedIds ? selectedIds.size > 0 && selectedIds.size === processedResources.length : false}
+                                ref={(el) => {
+                                    if (el) el.indeterminate = (selectedIds?.size ?? 0) > 0 && (selectedIds?.size ?? 0) < processedResources.length;
+                                }}
+                                onChange={() => onToggleSelectAll?.()}
+                                className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                            />
+                        </div>
+                    )}
+                    <div className={`flex-1 px-4 py-3 ${gridClass}`}>
+                        <HeaderCell label={t('common.name')} sortKey="lastName" />
+                        <HeaderCell label={t('resources.tribe')} sortKey="tribe" />
+                        <HeaderCell label={t('common.type')} sortKey="contractType" />
+                        <HeaderCell label={t('common.country')} sortKey="country" />
+                        <HeaderCell label={t('resources.tjm')} sortKey="tjm" align="right" />
+                        <HeaderCell label={t('resources.days')} sortKey="stats.days" align="center" />
+                        <HeaderCell label={t('resources.cost')} sortKey="stats.cost" align="right" />
+                        <HeaderCell label={t('resources.allocRC')} />
+                        <HeaderCell label={t('common.actions')} align="center" />
+                    </div>
+                </div>
+            </div>
+
+            {/* LIST CONTENT */}
+            <div className="flex-1 overflow-y-auto">
+                {processedResources.length > 0 ? (
+                    <div>
+                        {processedResources.map(res => (
+                            <ResourceRow
+                                key={res.id}
+                                resource={res}
+                                currentYear={currentYear}
+                                isEditing={editingId === res.id}
+                                isReadOnly={isReadOnly}
+                                onCalendarClick={onCalendarClick}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
+                                bulkEditMode={bulkEditMode}
+                                isSelected={selectedIds?.has(res.id)}
+                                onToggleSelect={onToggleSelect}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-400 italic gap-2">
+                        <User className="w-8 h-8 opacity-20" />
+                        {searchTerm ? 'No matching resources found.' : 'No resources defined yet.'}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 }

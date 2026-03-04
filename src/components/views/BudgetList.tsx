@@ -27,47 +27,46 @@ export default function BudgetList({ envelopes, onEdit, onDelete, editingId, isR
         <table className="w-full text-left">
           <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
             <tr>
-              <th className="px-6 py-4">{t('common.name')}</th>
-              <th className="px-6 py-4">{t('common.type')}</th>
-              <th className="px-6 py-4 text-right">{t('common.amount')}</th>
-              {!isReadOnly && <th className="px-6 py-4 text-center">{t('common.actions')}</th>}
+              <th className="px-3 md:px-6 py-4">{t('common.name')}</th>
+              <th className="px-3 md:px-6 py-4">{t('common.type')}</th>
+              <th className="px-3 md:px-6 py-4 text-right">{t('common.amount')}</th>
+              {!isReadOnly && <th className="px-3 md:px-6 py-4 text-center">{t('common.actions')}</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {envelopes.map((env) => (
               <tr key={env.id} className={`hover:bg-slate-50 transition-colors group ${editingId === env.id ? 'bg-blue-50/50' : ''}`}>
-                <td className="px-6 py-4 font-medium text-slate-700">{env.name}</td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    env.type === EnvelopeType.RUN 
-                      ? 'bg-orange-100 text-orange-800' 
+                <td className="px-3 md:px-6 py-4 font-medium text-slate-700">{env.name}</td>
+                <td className="px-3 md:px-6 py-4">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${env.type === EnvelopeType.RUN
+                      ? 'bg-orange-100 text-orange-800'
                       : 'bg-purple-100 text-purple-800'
-                  }`}>
+                    }`}>
                     {env.type}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-right font-mono text-slate-600">
+                <td className="px-3 md:px-6 py-4 text-right font-mono text-slate-600">
                   {formatCurrency(env.amount)}
                 </td>
                 {!isReadOnly && (
-                    <td className="px-6 py-4 text-center">
+                  <td className="px-3 md:px-6 py-4 text-center">
                     <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
+                      <button
                         onClick={() => onEdit(env)}
                         className="text-slate-400 hover:text-blue-600 p-1"
                         title={t('common.edit')}
-                        >
+                      >
                         <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button 
+                      </button>
+                      <button
                         onClick={() => onDelete(env.id)}
                         className="text-slate-400 hover:text-red-500 p-1"
                         title={t('common.delete')}
-                        >
+                      >
                         <Trash2 className="w-4 h-4" />
-                        </button>
+                      </button>
                     </div>
-                    </td>
+                  </td>
                 )}
               </tr>
             ))}

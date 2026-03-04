@@ -15,429 +15,429 @@ const formatDateDisplay = (dateStr: string) => {
 };
 
 interface ResourceCalendarProps {
-  resource: Resource;
-  onUpdateOverride: (date: string, value: OverrideValue | undefined) => void;
-  onBulkUpdate: (start: Date, end: Date, value: OverrideValue | undefined) => void;
-  onUpdateResource: (id: string, updates: Partial<Resource>) => void;
-  onApplyHolidays: (id: string, year: number, holidays: string[]) => void;
-  onBack: () => void;
-  isReadOnly?: boolean; // Prop propagated
+    resource: Resource;
+    onUpdateOverride: (date: string, value: OverrideValue | undefined) => void;
+    onBulkUpdate: (start: Date, end: Date, value: OverrideValue | undefined) => void;
+    onUpdateResource: (id: string, updates: Partial<Resource>) => void;
+    onApplyHolidays: (id: string, year: number, holidays: string[]) => void;
+    onBack: () => void;
+    isReadOnly?: boolean; // Prop propagated
 }
 
 export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpdate, onUpdateResource, onApplyHolidays, onBack, isReadOnly = false }: ResourceCalendarProps) {
-  const { t } = useTranslation();
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [statsMode, setStatsMode] = useState<'days' | 'cost'>('days');
-  const [isLoadingHolidays, setIsLoadingHolidays] = useState(false);
-  
-  // Bulk Edit State
-  const [bulkStart, setBulkStart] = useState('');
-  const [bulkEnd, setBulkEnd] = useState('');
-  const [bulkValue, setBulkValue] = useState<string>('0');
+    const { t } = useTranslation();
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [statsMode, setStatsMode] = useState<'days' | 'cost'>('days');
+    const [isLoadingHolidays, setIsLoadingHolidays] = useState(false);
 
-  const handleDayClick = (date: Date) => {
-    if (isReadOnly) return; // Prevent edit
+    // Bulk Edit State
+    const [bulkStart, setBulkStart] = useState('');
+    const [bulkEnd, setBulkEnd] = useState('');
+    const [bulkValue, setBulkValue] = useState<string>('0');
 
-    const { isOutOfBounds, val, defaultVal } = calculateDayStatus(date, resource);
-    if (isOutOfBounds) return;
+    const handleDayClick = (date: Date) => {
+        if (isReadOnly) return; // Prevent edit
 
-    const dateStr = format(date, 'yyyy-MM-dd');
-    let nextVal: OverrideValue = val === 1 ? 0.5 : val === 0.5 ? 0 : 1;
-    onUpdateOverride(dateStr, nextVal === defaultVal ? undefined : nextVal);
-  };
+        const { isOutOfBounds, val, defaultVal } = calculateDayStatus(date, resource);
+        if (isOutOfBounds) return;
 
-  const parseLocalDate = (dateStr: string): Date => {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  };
+        const dateStr = format(date, 'yyyy-MM-dd');
+        let nextVal: OverrideValue = val === 1 ? 0.5 : val === 0.5 ? 0 : 1;
+        onUpdateOverride(dateStr, nextVal === defaultVal ? undefined : nextVal);
+    };
 
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newStart = e.target.value;
-    setBulkStart(newStart);
-    
-    // Automatically set End Date to Start Date + 1 day for convenience
-    if (newStart) {
-        try {
-            const startDate = parseLocalDate(newStart);
-            const nextDay = addDays(startDate, 1);
-            setBulkEnd(format(nextDay, 'yyyy-MM-dd'));
-        } catch (error) {
-            // If date is invalid, ignore auto-set
+    const parseLocalDate = (dateStr: string): Date => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    };
+
+    const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newStart = e.target.value;
+        setBulkStart(newStart);
+
+        // Automatically set End Date to Start Date + 1 day for convenience
+        if (newStart) {
+            try {
+                const startDate = parseLocalDate(newStart);
+                const nextDay = addDays(startDate, 1);
+                setBulkEnd(format(nextDay, 'yyyy-MM-dd'));
+            } catch (error) {
+                // If date is invalid, ignore auto-set
+            }
         }
-    }
-  };
+    };
 
-  const toggleStatsMode = () => setStatsMode(prev => prev === 'days' ? 'cost' : 'days');
+    const toggleStatsMode = () => setStatsMode(prev => prev === 'days' ? 'cost' : 'days');
 
-  const handleBulkApply = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isReadOnly) return;
-    if (!bulkStart || !bulkEnd) return;
-    
-    const start = parseLocalDate(bulkStart);
-    const end = parseLocalDate(bulkEnd);
-    
-    if (start > end) {
-        alert(t('calendar.startBeforeEnd'));
-        return;
-    }
+    const handleBulkApply = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isReadOnly) return;
+        if (!bulkStart || !bulkEnd) return;
 
-    onBulkUpdate(start, end, bulkValue === 'default' ? undefined : parseFloat(bulkValue) as OverrideValue);
-    setSelectedYear(start.getFullYear());
-  };
+        const start = parseLocalDate(bulkStart);
+        const end = parseLocalDate(bulkEnd);
 
-  const handleLoadHolidays = async () => {
-    if (isReadOnly) return;
-    setIsLoadingHolidays(true);
-    try {
-        // Fetch from Public API
-        const response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${selectedYear}/${resource.country}`);
-        
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        // Extract date strings (YYYY-MM-DD)
-        const holidays: string[] = data.map((h: any) => h.date);
-
-        setIsLoadingHolidays(false);
-
-        if (holidays.length === 0) {
-            alert(t('calendar.noHolidaysFound', { country: resource.country, year: selectedYear }));
+        if (start > end) {
+            alert(t('calendar.startBeforeEnd'));
             return;
         }
 
-        if (window.confirm(t('calendar.confirmLoadHolidays', { count: holidays.length, country: resource.country, year: selectedYear }))) {
-            onApplyHolidays(resource.id, selectedYear, holidays);
+        onBulkUpdate(start, end, bulkValue === 'default' ? undefined : parseFloat(bulkValue) as OverrideValue);
+        setSelectedYear(start.getFullYear());
+    };
+
+    const handleLoadHolidays = async () => {
+        if (isReadOnly) return;
+        setIsLoadingHolidays(true);
+        try {
+            // Fetch from Public API
+            const response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${selectedYear}/${resource.country}`);
+
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            // Extract date strings (YYYY-MM-DD)
+            const holidays: string[] = data.map((h: any) => h.date);
+
+            setIsLoadingHolidays(false);
+
+            if (holidays.length === 0) {
+                alert(t('calendar.noHolidaysFound', { country: resource.country, year: selectedYear }));
+                return;
+            }
+
+            if (window.confirm(t('calendar.confirmLoadHolidays', { count: holidays.length, country: resource.country, year: selectedYear }))) {
+                onApplyHolidays(resource.id, selectedYear, holidays);
+            }
+
+        } catch (error) {
+            setIsLoadingHolidays(false);
+            console.error("Failed to load holidays:", error);
+            alert(t('calendar.loadHolidaysError', { error: error instanceof Error ? error.message : 'Unknown error' }));
         }
+    };
 
-    } catch (error) {
-        setIsLoadingHolidays(false);
-        console.error("Failed to load holidays:", error);
-        alert(t('calendar.loadHolidaysError', { error: error instanceof Error ? error.message : 'Unknown error' }));
-    }
-  };
+    // Yearly Stats Calculation
+    const yearlyStats = useMemo(() => {
+        let total = 0;
+        const start = new Date(selectedYear, 0, 1);
+        const end = new Date(selectedYear, 11, 31);
+        const days = eachDayOfInterval({ start, end });
 
-  // Yearly Stats Calculation
-  const yearlyStats = useMemo(() => {
-    let total = 0;
-    const start = new Date(selectedYear, 0, 1);
-    const end = new Date(selectedYear, 11, 31);
-    const days = eachDayOfInterval({ start, end });
-    
-    days.forEach(day => {
-        const { val, isOutOfBounds } = calculateDayStatus(day, resource);
-        if (!isOutOfBounds) {
-            total += val;
-        }
-    });
-    return total;
-  }, [selectedYear, resource.overrides, resource.country, resource.startDate, resource.endDate]);
+        days.forEach(day => {
+            const { val, isOutOfBounds } = calculateDayStatus(day, resource);
+            if (!isOutOfBounds) {
+                total += val;
+            }
+        });
+        return total;
+    }, [selectedYear, resource.overrides, resource.country, resource.startDate, resource.endDate]);
 
-  const yearlyCost = yearlyStats * resource.tjm;
+    const yearlyCost = yearlyStats * resource.tjm;
 
-  // Monthly Stats Calculation Helper
-  const getMonthlyStats = (monthIndex: number) => {
-    let total = 0;
-    const start = startOfMonth(new Date(selectedYear, monthIndex, 1));
-    const end = endOfMonth(start);
-    const days = eachDayOfInterval({ start, end });
-    
-    days.forEach(day => {
-        const { val, isOutOfBounds } = calculateDayStatus(day, resource);
-        if (!isOutOfBounds) {
-            total += val;
-        }
-    });
-    return total;
-  };
+    // Monthly Stats Calculation Helper
+    const getMonthlyStats = (monthIndex: number) => {
+        let total = 0;
+        const start = startOfMonth(new Date(selectedYear, monthIndex, 1));
+        const end = endOfMonth(start);
+        const days = eachDayOfInterval({ start, end });
 
-  // Generate Year Data
-  const months = Array.from({ length: 12 }, (_, i) => i);
+        days.forEach(day => {
+            const { val, isOutOfBounds } = calculateDayStatus(day, resource);
+            if (!isOutOfBounds) {
+                total += val;
+            }
+        });
+        return total;
+    };
 
-  return (
-    <div className="flex flex-col h-full bg-slate-50">
-      {/* Header Toolbar */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm shrink-0">
-        <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors" aria-label={t('calendar.backToList')}>
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-4">
-            <div>
-                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
-                {resource.firstName} {resource.lastName}
-                {/* Country Select - Disabled in ReadOnly */}
-                <select 
-                    value={resource.country}
-                    disabled={isReadOnly}
-                    onChange={(e) => onUpdateResource(resource.id, { country: e.target.value as Country })}
-                    className={`text-sm font-normal bg-slate-100 pl-2 pr-8 py-1 rounded text-slate-600 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500 ${isReadOnly ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}`}
-                >
-                    {Object.values(Country).map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-                </h2>
-                <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-                    <CalendarRange className="w-3 h-3" />
-                    <span>{t('calendar.contract', { start: formatDateDisplay(resource.startDate), end: formatDateDisplay(resource.endDate) })}</span>
-                </div>
-            </div>
+    // Generate Year Data
+    const months = Array.from({ length: 12 }, (_, i) => i);
 
-             {/* MOVED: Stats Badge next to user info */}
-             <div 
-                onDoubleClick={toggleStatsMode}
-                className={`
-                    flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all cursor-pointer select-none ml-4
-                    ${statsMode === 'days' 
-                        ? 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100' 
-                        : 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
-                    }
+    return (
+        <div className="flex flex-col h-full bg-slate-50">
+            {/* Header Toolbar */}
+            <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex flex-wrap items-center justify-between sticky top-0 z-20 shadow-sm shrink-0 gap-3">
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors" aria-label={t('calendar.backToList')}>
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <h2 className="text-lg md:text-xl font-bold text-slate-800 flex items-center gap-3 flex-wrap">
+                                {resource.firstName} {resource.lastName}
+                                {/* Country Select - Disabled in ReadOnly */}
+                                <select
+                                    value={resource.country}
+                                    disabled={isReadOnly}
+                                    onChange={(e) => onUpdateResource(resource.id, { country: e.target.value as Country })}
+                                    className={`text-sm font-normal bg-slate-100 pl-2 pr-8 py-1 rounded text-slate-600 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500 ${isReadOnly ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}`}
+                                >
+                                    {Object.values(Country).map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </h2>
+                            <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                                <CalendarRange className="w-3 h-3" />
+                                <span>{t('calendar.contract', { start: formatDateDisplay(resource.startDate), end: formatDateDisplay(resource.endDate) })}</span>
+                            </div>
+                        </div>
+
+                        {/* MOVED: Stats Badge next to user info */}
+                        <div
+                            onDoubleClick={toggleStatsMode}
+                            className={`
+                    flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all cursor-pointer select-none ml-0 md:ml-4
+                    ${statsMode === 'days'
+                                    ? 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
+                                }
                 `}
-                title={t('calendar.doubleClickHint')}
-            >
-                {statsMode === 'days' ? (
-                    <>
-                        <Calculator className="w-4 h-4" />
-                        <span className="text-sm font-bold">{t('calendar.daysInYear', { days: yearlyStats })}</span>
-                    </>
+                            title={t('calendar.doubleClickHint')}
+                        >
+                            {statsMode === 'days' ? (
+                                <>
+                                    <Calculator className="w-4 h-4" />
+                                    <span className="text-sm font-bold">{t('calendar.daysInYear', { days: yearlyStats })}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Banknote className="w-4 h-4" />
+                                    <span className="text-sm font-bold">{formatCurrency(yearlyCost)}</span>
+                                </>
+                            )}
+                            {/* ADDED: "in 2026" inside the badge */}
+                            <span className="text-sm font-normal opacity-75 ml-1">{t('calendar.inYear', { year: selectedYear })}</span>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-6">
+                    <div className="grid grid-cols-2 md:flex md:items-center gap-2 md:gap-3 text-xs font-medium text-slate-500 md:border-r border-slate-200 md:pr-6">
+                        <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-slate-200 rounded-sm"></div>{t('calendar.work')}</span>
+                        <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-amber-100 border border-amber-200 rounded-sm"></div>{t('calendar.half')}</span>
+                        <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-100 border border-red-200 rounded-sm"></div>{t('calendar.leave')}</span>
+                        <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-purple-100 border border-purple-200 rounded-sm"></div>{t('calendar.holidayOff')}</span>
+                        <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-green-100 border border-green-200 rounded-sm"></div>{t('calendar.workedWeHoliday')}</span>
+                        <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-slate-200 rounded-sm border border-slate-300"></div>{t('calendar.weekend')}</span>
+                    </div>
+
+                    {/* Load Holidays - Hidden in ReadOnly */}
+                    {!isReadOnly && (
+                        <button
+                            onClick={handleLoadHolidays}
+                            disabled={isLoadingHolidays}
+                            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={t('calendar.loadHolidays', { country: resource.country, year: selectedYear })}
+                        >
+                            {isLoadingHolidays ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                            {isLoadingHolidays ? t('calendar.loadingHolidays') : t('calendar.loadHolidaysBtn')}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+                {/* Sidebar: Mass Update - Hidden or Disabled in ReadOnly */}
+                {isReadOnly ? (
+                    <div className="w-full md:w-72 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex flex-col items-center justify-center text-center text-slate-400 shrink-0 z-10">
+                        <Lock className="w-8 h-8 mb-3 text-slate-300" />
+                        <h4 className="font-medium text-slate-500">{t('calendar.massUpdateLocked')}</h4>
+                        <p className="text-xs mt-1">{t('calendar.readOnlyActive')}</p>
+                    </div>
                 ) : (
-                    <>
-                        <Banknote className="w-4 h-4" />
-                        <span className="text-sm font-bold">{formatCurrency(yearlyCost)}</span>
-                    </>
+                    <div className="w-full md:w-72 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex flex-col gap-6 overflow-y-auto shrink-0 z-10">
+                        <div>
+                            <h3 className="font-semibold text-slate-800 flex items-center gap-2 mb-4">
+                                <Layers className="w-4 h-4 text-brand-600" />
+                                {t('calendar.massUpdate')}
+                            </h3>
+                            <p className="text-xs text-slate-500 mb-4">
+                                {t('calendar.massUpdateHelp')}
+                            </p>
+                            <form onSubmit={handleBulkApply} className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-700 mb-1">{t('resources.startDate')}</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                        value={bulkStart}
+                                        onChange={handleStartDateChange}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-700 mb-1">{t('resources.endDate')}</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                        value={bulkEnd}
+                                        onChange={(e) => setBulkEnd(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-700 mb-1">{t('calendar.valueToApply')}</label>
+                                    <select
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none bg-white"
+                                        value={bulkValue}
+                                        onChange={(e) => setBulkValue(e.target.value)}
+                                    >
+                                        <option value="0">{t('calendar.offLeave')}</option>
+                                        <option value="0.5">{t('calendar.halfDay')}</option>
+                                        <option value="1">{t('calendar.workingDay')}</option>
+                                        <option value="default">{t('calendar.resetToStandard')}</option>
+                                    </select>
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-colors mt-2"
+                                >
+                                    <Check className="w-4 h-4" /> {t('calendar.applyChanges')}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 )}
-                {/* ADDED: "in 2026" inside the badge */}
-                <span className="text-sm font-normal opacity-75 ml-1">{t('calendar.inYear', { year: selectedYear })}</span>
-            </div>
 
-          </div>
-        </div>
+                {/* Main Content: Linear Calendar Grid */}
+                <div className="flex-1 overflow-auto bg-white p-3 md:p-6 relative">
+                    {/* REMOVED: Big Year Header above grid */}
 
-        <div className="flex items-center gap-6">
-           <div className="flex items-center gap-3 text-xs font-medium text-slate-500 border-r border-slate-200 pr-6">
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-slate-200 rounded-sm"></div>{t('calendar.work')}</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-amber-100 border border-amber-200 rounded-sm"></div>{t('calendar.half')}</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-100 border border-red-200 rounded-sm"></div>{t('calendar.leave')}</span>
-                 <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-purple-100 border border-purple-200 rounded-sm"></div>{t('calendar.holidayOff')}</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-green-100 border border-green-200 rounded-sm"></div>{t('calendar.workedWeHoliday')}</span>
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-slate-200 rounded-sm border border-slate-300"></div>{t('calendar.weekend')}</span>
-            </div>
-
-            {/* Load Holidays - Hidden in ReadOnly */}
-            {!isReadOnly && (
-                <button 
-                    onClick={handleLoadHolidays}
-                    disabled={isLoadingHolidays}
-                    className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={t('calendar.loadHolidays', { country: resource.country, year: selectedYear })}
-                >
-                    {isLoadingHolidays ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    {isLoadingHolidays ? t('calendar.loadingHolidays') : t('calendar.loadHolidaysBtn')}
-                </button>
-            )}
-        </div>
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar: Mass Update - Hidden or Disabled in ReadOnly */}
-        {isReadOnly ? (
-             <div className="w-72 bg-slate-50 border-r border-slate-200 p-6 flex flex-col items-center justify-center text-center text-slate-400 shrink-0 z-10">
-                <Lock className="w-8 h-8 mb-3 text-slate-300" />
-                <h4 className="font-medium text-slate-500">{t('calendar.massUpdateLocked')}</h4>
-                <p className="text-xs mt-1">{t('calendar.readOnlyActive')}</p>
-             </div>
-        ) : (
-            <div className="w-72 bg-white border-r border-slate-200 p-6 flex flex-col gap-6 overflow-y-auto shrink-0 z-10">
-            <div>
-                <h3 className="font-semibold text-slate-800 flex items-center gap-2 mb-4">
-                <Layers className="w-4 h-4 text-brand-600" />
-                {t('calendar.massUpdate')}
-                </h3>
-                <p className="text-xs text-slate-500 mb-4">
-                {t('calendar.massUpdateHelp')}
-                </p>
-                <form onSubmit={handleBulkApply} className="space-y-4">
-                <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">{t('resources.startDate')}</label>
-                    <input 
-                    type="date" 
-                    required
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none"
-                    value={bulkStart}
-                    onChange={handleStartDateChange}
-                    />
-                </div>
-                <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">{t('resources.endDate')}</label>
-                    <input 
-                    type="date" 
-                    required
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none"
-                    value={bulkEnd}
-                    onChange={(e) => setBulkEnd(e.target.value)}
-                    />
-                </div>
-                <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">{t('calendar.valueToApply')}</label>
-                    <select 
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none bg-white"
-                    value={bulkValue}
-                    onChange={(e) => setBulkValue(e.target.value)}
-                    >
-                    <option value="0">{t('calendar.offLeave')}</option>
-                    <option value="0.5">{t('calendar.halfDay')}</option>
-                    <option value="1">{t('calendar.workingDay')}</option>
-                    <option value="default">{t('calendar.resetToStandard')}</option>
-                    </select>
-                </div>
-                <button 
-                    type="submit"
-                    className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-colors mt-2"
-                >
-                    <Check className="w-4 h-4" /> {t('calendar.applyChanges')}
-                </button>
-                </form>
-            </div>
-            </div>
-        )}
-
-        {/* Main Content: Linear Calendar Grid */}
-        <div className="flex-1 overflow-auto bg-white p-6 relative">
-             {/* REMOVED: Big Year Header above grid */}
-             
-            <div className="w-full">
-                {/* 
+                    <div className="w-full">
+                        {/* 
                    GRID DEFINITION: 
                    1st Col: 140px fixed for Month Label
                    Rest: 31 columns each taking 1 fraction (1fr) of available space.
                 */}
-                <div className="grid grid-cols-[140px_repeat(31,1fr)] gap-px bg-slate-200 border border-slate-200 shadow-sm">
-                    {/* Header Row */}
-                    <div className="bg-slate-100 p-2 font-semibold text-xs text-slate-500 sticky top-0 left-0 z-20 shadow-sm text-center">{t('calendar.month')}</div>
-                    {Array.from({ length: 31 }, (_, i) => (
-                        <div key={i} className="bg-slate-50 p-2 text-center text-xs font-semibold text-slate-500 sticky top-0 z-10">
-                            {i + 1}
-                        </div>
-                    ))}
-
-                    {/* Month Rows */}
-                    {months.map(monthIndex => {
-                        const monthStart = new Date(selectedYear, monthIndex, 1);
-                        const daysInMonth = endOfMonth(monthStart).getDate();
-                        const monthlyStatsVal = getMonthlyStats(monthIndex);
-                        const monthlyCostVal = monthlyStatsVal * resource.tjm;
-
-                        return (
-                            <React.Fragment key={monthIndex}>
-                                <div className="bg-white p-2 sticky left-0 z-10 border-r border-slate-100 flex flex-col items-center justify-center shadow-[1px_0_3px_rgba(0,0,0,0.05)] overflow-hidden">
-                                    <span className="font-bold text-xs text-slate-700 capitalize leading-tight">
-                                        {format(monthStart, 'MMM')}
-                                    </span>
-                                    <div 
-                                        onDoubleClick={toggleStatsMode}
-                                        className={`
-                                            mt-1 flex items-center justify-center gap-1.5 px-2 py-0.5 rounded-md border cursor-pointer select-none transition-all w-full
-                                            ${statsMode === 'days' 
-                                                ? 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100' 
-                                                : 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
-                                            }
-                                        `}
-                                        title={t('calendar.doubleClickHint')}
-                                    >
-                                        <span className="text-[10px] font-bold whitespace-nowrap">
-                                            {statsMode === 'days' ? (
-                                                <div className="flex items-center gap-1">
-                                                    <Calculator className="w-3 h-3" />
-                                                    {t('calendar.daysInYear', { days: monthlyStatsVal })}
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-1">
-                                                    <Banknote className="w-3 h-3" />
-                                                    {formatCurrency(monthlyCostVal)}
-                                                </div>
-                                            )}
-                                        </span>
-                                    </div>
+                        <div className="grid grid-cols-[80px_repeat(31,minmax(28px,1fr))] md:grid-cols-[140px_repeat(31,1fr)] gap-px bg-slate-200 border border-slate-200 shadow-sm min-w-[900px]">
+                            {/* Header Row */}
+                            <div className="bg-slate-100 p-2 font-semibold text-xs text-slate-500 sticky top-0 left-0 z-20 shadow-sm text-center">{t('calendar.month')}</div>
+                            {Array.from({ length: 31 }, (_, i) => (
+                                <div key={i} className="bg-slate-50 p-2 text-center text-xs font-semibold text-slate-500 sticky top-0 z-10">
+                                    {i + 1}
                                 </div>
-                                {Array.from({ length: 31 }, (_, dayIndex) => {
-                                    const dayNum = dayIndex + 1;
-                                    
-                                    if (dayNum > daysInMonth) {
-                                        return <div key={dayIndex} className="bg-slate-900 relative" />;
-                                    }
+                            ))}
 
-                                    const currentDate = new Date(selectedYear, monthIndex, dayNum);
-                                    const { val, isHoliday, isWknd, overrideActive, isOutOfBounds } = calculateDayStatus(currentDate, resource);
+                            {/* Month Rows */}
+                            {months.map(monthIndex => {
+                                const monthStart = new Date(selectedYear, monthIndex, 1);
+                                const daysInMonth = endOfMonth(monthStart).getDate();
+                                const monthlyStatsVal = getMonthlyStats(monthIndex);
+                                const monthlyCostVal = monthlyStatsVal * resource.tjm;
 
-                                    // Base Background for Out of Bounds
-                                    if (isOutOfBounds) {
-                                        return (
-                                            <div 
-                                                key={dayIndex}
-                                                className="bg-slate-50 border-white relative h-10 flex items-center justify-center cursor-not-allowed overflow-hidden"
-                                                title={t('calendar.notEmployed')}
-                                                style={{
-                                                  backgroundImage: 'repeating-linear-gradient(45deg, #f8fafc, #f8fafc 10px, #f1f5f9 10px, #f1f5f9 20px)'
-                                                }}
+                                return (
+                                    <React.Fragment key={monthIndex}>
+                                        <div className="bg-white p-2 sticky left-0 z-10 border-r border-slate-100 flex flex-col items-center justify-center shadow-[1px_0_3px_rgba(0,0,0,0.05)] overflow-hidden">
+                                            <span className="font-bold text-xs text-slate-700 capitalize leading-tight">
+                                                {format(monthStart, 'MMM')}
+                                            </span>
+                                            <div
+                                                onDoubleClick={toggleStatsMode}
+                                                className={`
+                                            mt-1 flex items-center justify-center gap-1.5 px-2 py-0.5 rounded-md border cursor-pointer select-none transition-all w-full
+                                            ${statsMode === 'days'
+                                                        ? 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100'
+                                                        : 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
+                                                    }
+                                        `}
+                                                title={t('calendar.doubleClickHint')}
                                             >
+                                                <span className="text-[10px] font-bold whitespace-nowrap">
+                                                    {statsMode === 'days' ? (
+                                                        <div className="flex items-center gap-1">
+                                                            <Calculator className="w-3 h-3" />
+                                                            {t('calendar.daysInYear', { days: monthlyStatsVal })}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-1">
+                                                            <Banknote className="w-3 h-3" />
+                                                            {formatCurrency(monthlyCostVal)}
+                                                        </div>
+                                                    )}
+                                                </span>
                                             </div>
-                                        );
-                                    }
+                                        </div>
+                                        {Array.from({ length: 31 }, (_, dayIndex) => {
+                                            const dayNum = dayIndex + 1;
 
-                                    let bgClass = 'bg-white';
-                                    const isWorkedWEOrHoliday = (isWknd || isHoliday) && val > 0;
+                                            if (dayNum > daysInMonth) {
+                                                return <div key={dayIndex} className="bg-slate-900 relative" />;
+                                            }
 
-                                    if (isWorkedWEOrHoliday) {
-                                        bgClass = 'bg-green-100';
-                                    } else if (val === 0) {
-                                        if (isHoliday) {
-                                            bgClass = 'bg-purple-100'; // Specific color for non-worked holidays
-                                        } else if (isWknd) {
-                                            bgClass = 'bg-slate-200'; // Weekend
-                                        } else {
-                                            bgClass = 'bg-red-100'; // Regular leave
-                                        }
-                                    } else if (val === 0.5) {
-                                        bgClass = 'bg-amber-100';
-                                    } else if (val === 1) {
-                                        bgClass = 'bg-white';
-                                    }
+                                            const currentDate = new Date(selectedYear, monthIndex, dayNum);
+                                            const { val, isHoliday, isWknd, overrideActive, isOutOfBounds } = calculateDayStatus(currentDate, resource);
+
+                                            // Base Background for Out of Bounds
+                                            if (isOutOfBounds) {
+                                                return (
+                                                    <div
+                                                        key={dayIndex}
+                                                        className="bg-slate-50 border-white relative h-10 flex items-center justify-center cursor-not-allowed overflow-hidden"
+                                                        title={t('calendar.notEmployed')}
+                                                        style={{
+                                                            backgroundImage: 'repeating-linear-gradient(45deg, #f8fafc, #f8fafc 10px, #f1f5f9 10px, #f1f5f9 20px)'
+                                                        }}
+                                                    >
+                                                    </div>
+                                                );
+                                            }
+
+                                            let bgClass = 'bg-white';
+                                            const isWorkedWEOrHoliday = (isWknd || isHoliday) && val > 0;
+
+                                            if (isWorkedWEOrHoliday) {
+                                                bgClass = 'bg-green-100';
+                                            } else if (val === 0) {
+                                                if (isHoliday) {
+                                                    bgClass = 'bg-purple-100'; // Specific color for non-worked holidays
+                                                } else if (isWknd) {
+                                                    bgClass = 'bg-slate-200'; // Weekend
+                                                } else {
+                                                    bgClass = 'bg-red-100'; // Regular leave
+                                                }
+                                            } else if (val === 0.5) {
+                                                bgClass = 'bg-amber-100';
+                                            } else if (val === 1) {
+                                                bgClass = 'bg-white';
+                                            }
 
 
-                                    return (
-                                        <button
-                                            key={dayIndex}
-                                            onClick={() => handleDayClick(currentDate)}
-                                            className={`
+                                            return (
+                                                <button
+                                                    key={dayIndex}
+                                                    onClick={() => handleDayClick(currentDate)}
+                                                    className={`
                                                 relative h-10 border-white transition-all flex items-center justify-center group
                                                 ${!isReadOnly ? 'hover:z-10 hover:ring-2 hover:ring-blue-500' : 'cursor-default'}
                                                 ${bgClass}
                                             `}
-                                            title={`${formatDateDisplay(format(currentDate, 'yyyy-MM-dd'))}: ${val * 100}% ${isHoliday ? `(${t('calendar.holiday')})` : ''}`}
-                                            aria-label={`${format(currentDate, 'dd/MM/yyyy')}: ${val * 100}%${isHoliday ? ` (${t('calendar.holiday')})` : ''}`}
-                                            disabled={isReadOnly}
-                                        >
-                                            <span className={`text-[10px] font-bold ${isWknd || val === 0 ? 'text-slate-500' : 'text-slate-700'}`}>
-                                                {val === 0.5 ? '½' : ''}
-                                                {val === 0 && !isWknd && !isHoliday ? '0' : ''}
-                                                {isHoliday && val === 0 ? 'F' : ''}
-                                            </span>
+                                                    title={`${formatDateDisplay(format(currentDate, 'yyyy-MM-dd'))}: ${val * 100}% ${isHoliday ? `(${t('calendar.holiday')})` : ''}`}
+                                                    aria-label={`${format(currentDate, 'dd/MM/yyyy')}: ${val * 100}%${isHoliday ? ` (${t('calendar.holiday')})` : ''}`}
+                                                    disabled={isReadOnly}
+                                                >
+                                                    <span className={`text-[10px] font-bold ${isWknd || val === 0 ? 'text-slate-500' : 'text-slate-700'}`}>
+                                                        {val === 0.5 ? '½' : ''}
+                                                        {val === 0 && !isWknd && !isHoliday ? '0' : ''}
+                                                        {isHoliday && val === 0 ? 'F' : ''}
+                                                    </span>
 
-                                            {/* Dot Override Indicator */}
-                                            {overrideActive && (
-                                                <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-blue-600 rounded-full z-20 shadow-sm" title={t('calendar.manualOverride')} />
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </React.Fragment>
-                        );
-                    })}
+                                                    {/* Dot Override Indicator */}
+                                                    {overrideActive && (
+                                                        <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-blue-600 rounded-full z-20 shadow-sm" title={t('calendar.manualOverride')} />
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }

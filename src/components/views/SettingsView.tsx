@@ -55,158 +55,158 @@ export default function SettingsView({ user, userRole, onResetData }: SettingsVi
     updateResult('auth', { status: 'running' });
     await new Promise(r => setTimeout(r, 500)); // UI delay for feel
     if (user && user.uid) {
-        updateResult('auth', { status: 'success', message: t('settings.connectedAs', { email: user.email }) });
+      updateResult('auth', { status: 'success', message: t('settings.connectedAs', { email: user.email }) });
     } else {
-        updateResult('auth', { status: 'error', message: t('settings.userNotDetected') });
-        return;
+      updateResult('auth', { status: 'error', message: t('settings.userNotDetected') });
+      return;
     }
 
     // 2. CONNECTION CHECK (Ping)
     updateResult('conn', { status: 'running' });
     const start = performance.now();
     try {
-        await getDoc(doc(db, "health_check", "ping"));
-        const end = performance.now();
-        updateResult('conn', { status: 'success', latency: Math.round(end - start), message: t('settings.connectionEstablished') });
+      await getDoc(doc(db, "health_check", "ping"));
+      const end = performance.now();
+      updateResult('conn', { status: 'success', latency: Math.round(end - start), message: t('settings.connectionEstablished') });
     } catch (e: unknown) {
-        const err = e as { code?: string; message?: string };
-        if (err.code === 'permission-denied') {
-             const end = performance.now();
-             updateResult('conn', { status: 'success', latency: Math.round(end - start), message: t('settings.connectionEstablishedRules') });
-        } else {
-            console.error(e);
-            updateResult('conn', { status: 'error', message: err.message || t('settings.networkError') });
-            return;
-        }
+      const err = e as { code?: string; message?: string };
+      if (err.code === 'permission-denied') {
+        const end = performance.now();
+        updateResult('conn', { status: 'success', latency: Math.round(end - start), message: t('settings.connectionEstablishedRules') });
+      } else {
+        console.error(e);
+        updateResult('conn', { status: 'error', message: err.message || t('settings.networkError') });
+        return;
+      }
     }
 
     // 3. PERMISSIONS CHECK
     updateResult('perm', { status: 'running' });
     try {
-        const q = query(collection(db, "scenarios"), where("ownerId", "==", user.email), limit(1));
-        await getDocs(q);
-        updateResult('perm', { status: 'success', message: t('settings.dataAccessOk') });
+      const q = query(collection(db, "scenarios"), where("ownerId", "==", user.email), limit(1));
+      await getDocs(q);
+      updateResult('perm', { status: 'success', message: t('settings.dataAccessOk') });
     } catch (e: unknown) {
-        console.error(e);
-        updateResult('perm', { status: 'error', message: t('settings.dataAccessDenied') });
+      console.error(e);
+      updateResult('perm', { status: 'error', message: t('settings.dataAccessDenied') });
     }
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-8">
+    <div className="max-w-5xl mx-auto p-4 md:p-8">
       <h1 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
         {t('settings.title')}
       </h1>
 
       {/* TABS HEADER */}
-      <div className="flex border-b border-slate-200 mb-8">
-          <button
-            onClick={() => setActiveTab('system')}
-            className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'system' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-          >
-              <Activity className="w-4 h-4" />
-              {t('settings.systemTab')}
-          </button>
+      <div className="flex overflow-x-auto border-b border-slate-200 mb-8">
+        <button
+          onClick={() => setActiveTab('system')}
+          className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'system' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          <Activity className="w-4 h-4" />
+          {t('settings.systemTab')}
+        </button>
 
-          {userRole === 'ADMIN' && (
-              <>
-                <button
-                  onClick={() => setActiveTab('users')}
-                  className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'users' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-                >
-                    <Users className="w-4 h-4" />
-                    {t('settings.usersTab')}
-                </button>
-                <button
-                  onClick={() => setActiveTab('danger')}
-                  className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'danger' ? 'border-red-600 text-red-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-                >
-                    <AlertTriangle className="w-4 h-4" />
-                    {t('settings.dangerTab')}
-                </button>
-              </>
-          )}
+        {userRole === 'ADMIN' && (
+          <>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'users' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            >
+              <Users className="w-4 h-4" />
+              {t('settings.usersTab')}
+            </button>
+            <button
+              onClick={() => setActiveTab('danger')}
+              className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'danger' ? 'border-red-600 text-red-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            >
+              <AlertTriangle className="w-4 h-4" />
+              {t('settings.dangerTab')}
+            </button>
+          </>
+        )}
       </div>
 
       {/* TAB CONTENT: SYSTEM */}
       {activeTab === 'system' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in duration-300">
-             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-fit">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-lg font-semibold text-slate-700 flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-brand-600" />
-                        {t('settings.systemHealth')}
-                    </h2>
-                    <button 
-                        onClick={runDiagnostics}
-                        className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                    >
-                        <Play className="w-4 h-4" /> {t('settings.runTest')}
-                    </button>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in duration-300">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-fit">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-semibold text-slate-700 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-brand-600" />
+                {t('settings.systemHealth')}
+              </h2>
+              <button
+                onClick={runDiagnostics}
+                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              >
+                <Play className="w-4 h-4" /> {t('settings.runTest')}
+              </button>
+            </div>
 
-                <div className="space-y-4">
-                    {results.map((test) => (
-                        <div key={test.id} className="flex items-start gap-3 p-3 rounded-lg border border-slate-100 bg-slate-50">
-                            <div className="mt-0.5">
-                                {test.status === 'idle' && <div className="w-5 h-5 rounded-full border-2 border-slate-300" />}
-                                {test.status === 'running' && <div className="w-5 h-5 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />}
-                                {test.status === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
-                                {test.status === 'error' && <XCircle className="w-5 h-5 text-red-500" />}
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex justify-between">
-                                    <span className="font-medium text-slate-700">{test.name}</span>
-                                    {test.latency && <span className="text-xs font-mono text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">{test.latency}ms</span>}
-                                </div>
-                                <p className="text-sm text-slate-500 min-h-[1.25em]">{test.message || t('settings.waiting')}</p>
-                            </div>
-                        </div>
-                    ))}
+            <div className="space-y-4">
+              {results.map((test) => (
+                <div key={test.id} className="flex items-start gap-3 p-3 rounded-lg border border-slate-100 bg-slate-50">
+                  <div className="mt-0.5">
+                    {test.status === 'idle' && <div className="w-5 h-5 rounded-full border-2 border-slate-300" />}
+                    {test.status === 'running' && <div className="w-5 h-5 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />}
+                    {test.status === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                    {test.status === 'error' && <XCircle className="w-5 h-5 text-red-500" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between">
+                      <span className="font-medium text-slate-700">{test.name}</span>
+                      {test.latency && <span className="text-xs font-mono text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">{test.latency}ms</span>}
+                    </div>
+                    <p className="text-sm text-slate-500 min-h-[1.25em]">{test.message || t('settings.waiting')}</p>
+                  </div>
                 </div>
-                
-                <div className="mt-6 p-4 bg-blue-50 text-blue-800 rounded-lg text-sm flex gap-3">
-                    <Shield className="w-5 h-5 shrink-0" />
-                    <p>{t('settings.securityInfo', { email: user.email })}</p>
-                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 p-4 bg-blue-50 text-blue-800 rounded-lg text-sm flex gap-3">
+              <Shield className="w-5 h-5 shrink-0" />
+              <p>{t('settings.securityInfo', { email: user.email })}</p>
             </div>
           </div>
+        </div>
       )}
 
       {/* TAB CONTENT: USERS */}
       {activeTab === 'users' && userRole === 'ADMIN' && (
-          <div className="max-w-2xl animate-in fade-in duration-300">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <UsersManager currentUserEmail={user.email} />
-            </div>
+        <div className="max-w-2xl animate-in fade-in duration-300">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <UsersManager currentUserEmail={user.email} />
           </div>
+        </div>
       )}
 
       {/* TAB CONTENT: DANGER ZONE */}
       {activeTab === 'danger' && userRole === 'ADMIN' && (
-          <div className="max-w-xl animate-in fade-in duration-300">
-            <div className="bg-white rounded-xl shadow-sm border border-red-200 p-6">
-                <h2 className="text-lg font-semibold text-red-600 flex items-center gap-2 mb-6">
-                    <AlertTriangle className="w-5 h-5" />
-                    {t('settings.dangerZone')}
-                </h2>
+        <div className="max-w-xl animate-in fade-in duration-300">
+          <div className="bg-white rounded-xl shadow-sm border border-red-200 p-6">
+            <h2 className="text-lg font-semibold text-red-600 flex items-center gap-2 mb-6">
+              <AlertTriangle className="w-5 h-5" />
+              {t('settings.dangerZone')}
+            </h2>
 
-                <div className="space-y-6">
-                    <div>
-                        <h3 className="font-medium text-slate-800 mb-1">{t('settings.resetDatabase')}</h3>
-                        <p className="text-sm text-slate-500 mb-3">
-                            {t('settings.resetDatabaseMessage')}
-                        </p>
-                        <button
-                            onClick={onResetData}
-                            className="w-full border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
-                        >
-                            {t('settings.resetDatabaseButton')}
-                        </button>
-                    </div>
-                </div>
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-medium text-slate-800 mb-1">{t('settings.resetDatabase')}</h3>
+                <p className="text-sm text-slate-500 mb-3">
+                  {t('settings.resetDatabaseMessage')}
+                </p>
+                <button
+                  onClick={onResetData}
+                  className="w-full border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                >
+                  {t('settings.resetDatabaseButton')}
+                </button>
+              </div>
             </div>
           </div>
+        </div>
       )}
     </div>
   );

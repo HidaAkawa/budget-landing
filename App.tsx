@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Calculator, LogOut, Wallet, FileClock, ShieldAlert, Loader, FolderPlus, Settings, Lock, Calendar as CalendarIcon, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator, LogOut, Wallet, FileClock, ShieldAlert, Loader, FolderPlus, Settings, Lock, Calendar as CalendarIcon, PanelLeftClose, PanelLeftOpen, Menu, X } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { APP_NAME } from '@/constants';
@@ -23,6 +23,7 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem('sidebar-collapsed') === 'true'; } catch { return false; }
   });
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     try { localStorage.setItem('sidebar-collapsed', String(sidebarCollapsed)); } catch { /* noop */ }
@@ -195,7 +196,7 @@ function App() {
 
   // --- MAIN APP UI ---
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 overflow-hidden relative">
       <Toaster richColors position="top-center" closeButton />
 
       <ConfirmModal
@@ -208,25 +209,47 @@ function App() {
         confirmLabel="Tout Supprimer"
       />
 
+      {/* Mobile Overlay Backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`${sidebarCollapsed ? 'w-[60px]' : 'w-64'} bg-slate-900 text-slate-300 flex flex-col shrink-0 transition-all duration-300 overflow-hidden`}>
-        <div className={`p-4 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} text-white`}>
-          {!sidebarCollapsed && (
+      <aside className={`
+        ${sidebarCollapsed ? 'md:w-[60px]' : 'md:w-64'}
+        bg-slate-900 text-slate-300 flex flex-col shrink-0 transition-all duration-300 overflow-hidden
+        fixed inset-y-0 left-0 z-50 w-64
+        ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        md:translate-x-0 md:static md:z-auto
+      `}>
+        <div className={`p-4 flex items-center ${sidebarCollapsed ? 'md:justify-center' : 'justify-between'} text-white`}>
+          {(!sidebarCollapsed || mobileSidebarOpen) && (
             <div className="flex items-center gap-3">
               <Calculator className="w-6 h-6 text-brand-500 shrink-0" />
               <span className="font-bold text-lg tracking-tight whitespace-nowrap">{APP_NAME}</span>
             </div>
           )}
+          {/* Close button on mobile */}
+          <button
+            onClick={() => setMobileSidebarOpen(false)}
+            className="text-slate-400 hover:text-white transition-colors shrink-0 md:hidden"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          {/* Collapse button on desktop */}
           <button
             onClick={() => setSidebarCollapsed(prev => !prev)}
-            className="text-slate-400 hover:text-white transition-colors shrink-0"
+            className="text-slate-400 hover:text-white transition-colors shrink-0 hidden md:block"
             title={sidebarCollapsed ? t('sidebar.openMenu') : t('sidebar.closeMenu')}
           >
             {sidebarCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
           </button>
         </div>
 
-        <nav className={`flex-1 ${sidebarCollapsed ? 'px-1.5' : 'px-4'} space-y-2`}>
+        <nav className={`flex-1 px-4 ${sidebarCollapsed ? 'md:px-1.5' : 'md:px-4'} space-y-2`}>
           {([
             { view: 'dashboard' as const, icon: LayoutDashboard, label: t('sidebar.dashboard') },
             { view: 'budget' as const, icon: Wallet, label: t('sidebar.budget') },
@@ -236,44 +259,42 @@ function App() {
           ]).map(({ view, icon: Icon, label }) => (
             <button
               key={view}
-              onClick={() => setCurrentView(view)}
+              onClick={() => { setCurrentView(view); setMobileSidebarOpen(false); }}
               title={sidebarCollapsed ? label : undefined}
-              className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-lg transition-colors ${currentView === view ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'}`}
+              className={`w-full flex items-center gap-3 px-4 ${sidebarCollapsed ? 'md:justify-center md:px-2 md:gap-0' : ''} py-3 rounded-lg transition-colors ${currentView === view ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'}`}
             >
               <Icon className="w-5 h-5 shrink-0" />
-              {!sidebarCollapsed && <span className="whitespace-nowrap">{label}</span>}
+              <span className={`whitespace-nowrap ${sidebarCollapsed ? 'md:hidden' : ''}`}>{label}</span>
             </button>
           ))}
         </nav>
 
-        <div className={`${sidebarCollapsed ? 'p-1.5' : 'p-4'} border-t border-slate-800 space-y-2`}>
+        <div className={`p-4 ${sidebarCollapsed ? 'md:p-1.5' : 'md:p-4'} border-t border-slate-800 space-y-2`}>
           <button
-            onClick={() => setCurrentView('settings')}
+            onClick={() => { setCurrentView('settings'); setMobileSidebarOpen(false); }}
             title={sidebarCollapsed ? t('sidebar.settings') : undefined}
-            className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-2 rounded-lg transition-colors text-sm mb-2 ${currentView === 'settings' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+            className={`w-full flex items-center gap-3 px-4 ${sidebarCollapsed ? 'md:justify-center md:px-2 md:gap-0' : ''} py-2 rounded-lg transition-colors text-sm mb-2 ${currentView === 'settings' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
           >
             <Settings className="w-4 h-4 shrink-0" />
-            {!sidebarCollapsed && <span className="whitespace-nowrap">{t('sidebar.settings')}</span>}
+            <span className={`whitespace-nowrap ${sidebarCollapsed ? 'md:hidden' : ''}`}>{t('sidebar.settings')}</span>
           </button>
 
           <LanguageSelector collapsed={sidebarCollapsed} />
 
-          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3 px-2'} mb-4 pt-2 border-t border-slate-800`}>
+          <div className={`flex items-center gap-3 px-2 ${sidebarCollapsed ? 'md:justify-center md:gap-0 md:px-0' : ''} mb-4 pt-2 border-t border-slate-800`}>
             {user.photoURL && <img src={user.photoURL} alt="User avatar" className="w-8 h-8 rounded-full shrink-0" />}
-            {!sidebarCollapsed && (
-              <div className="text-sm">
-                <p className="text-white font-medium">{user.displayName}</p>
-                <p className="text-xs text-slate-500">{userRole === 'ADMIN' ? t('sidebar.admin') : t('sidebar.user')}</p>
-              </div>
-            )}
+            <div className={`text-sm ${sidebarCollapsed ? 'md:hidden' : ''}`}>
+              <p className="text-white font-medium">{user.displayName}</p>
+              <p className="text-xs text-slate-500">{userRole === 'ADMIN' ? t('sidebar.admin') : t('sidebar.user')}</p>
+            </div>
           </div>
           <button
             onClick={handleLogout}
             title={sidebarCollapsed ? t('common.signOut') : undefined}
-            className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'gap-2 px-4'} py-2 text-sm text-slate-400 hover:text-white transition-colors`}
+            className={`w-full flex items-center gap-2 px-4 ${sidebarCollapsed ? 'md:justify-center md:px-2 md:gap-0' : ''} py-2 text-sm text-slate-400 hover:text-white transition-colors`}
           >
             <LogOut className="w-4 h-4 shrink-0" />
-            {!sidebarCollapsed && <span>{t('common.signOut')}</span>}
+            <span className={`${sidebarCollapsed ? 'md:hidden' : ''}`}>{t('common.signOut')}</span>
           </button>
         </div>
       </aside>
@@ -282,12 +303,20 @@ function App() {
       <main className="flex-1 overflow-auto relative flex flex-col">
         <header
           className={`
-            border-b border-slate-200 sticky top-0 z-10 px-8 py-4 flex justify-between items-center shrink-0 transition-colors
+            border-b border-slate-200 sticky top-0 z-10 px-4 md:px-8 py-4 flex justify-between items-center shrink-0 transition-colors
             ${isReadOnly && currentView !== 'settings' && currentView !== 'calendars' ? 'bg-amber-50 border-amber-100' : 'bg-white'}
           `}
         >
           <div className="flex items-center gap-3">
-            <h2 className={`text-xl font-semibold capitalize flex items-center gap-2 ${isReadOnly && currentView !== 'settings' && currentView !== 'calendars' ? 'text-amber-900' : 'text-slate-800'}`}>
+            {/* Hamburger button — mobile only */}
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              className="md:hidden p-1.5 -ml-1 text-slate-600 hover:text-slate-900 transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <h2 className={`text-lg md:text-xl font-semibold capitalize flex items-center gap-2 ${isReadOnly && currentView !== 'settings' && currentView !== 'calendars' ? 'text-amber-900' : 'text-slate-800'}`}>
               {t(`sidebar.${currentView === 'calendars' ? 'calendars' : currentView}`)}
               {isReadOnly && currentView !== 'settings' && currentView !== 'calendars' && (
                 <Lock className="w-5 h-5 text-amber-600 opacity-75" />
@@ -297,7 +326,7 @@ function App() {
 
           {currentView !== 'settings' && currentView !== 'calendars' && (
             <div className="flex items-center gap-4">
-              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${scenario.status === 'MASTER' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{scenario.name} ({scenario.status})</span>
+              <span className={`px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wide border ${scenario.status === 'MASTER' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{scenario.name} ({scenario.status})</span>
             </div>
           )}
         </header>
