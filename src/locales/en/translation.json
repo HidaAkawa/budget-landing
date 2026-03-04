@@ -132,7 +132,9 @@
     "applying": "Applying...",
     "bulkUpdateSuccess": "{{count}} resource(s) updated",
     "bulkUpdateError": "Error during bulk update.",
-    "applyField": "Apply this field"
+    "applyField": "Apply this field",
+    "noMatchingResources": "No matching resources found.",
+    "noResourcesDefined": "No resources defined yet."
   },
   "calendar": {
     "backToList": "Back to list",
@@ -166,7 +168,9 @@
     "month": "Month",
     "noHolidaysFound": "No holidays returned from API for {{country}} in {{year}}.",
     "confirmLoadHolidays": "Found {{count}} public holidays for {{country}} in {{year}} via API.\n\nLoad them into the calendar as 'Off' days?",
-    "loadHolidaysError": "Failed to load holidays: {{error}}"
+    "loadHolidaysError": "Failed to load holidays: {{error}}",
+    "legend": "Legend",
+    "massEditPanel": "Mass Edit Panel"
   },
   "simulation": {
     "newDraftCreated": "New draft created",

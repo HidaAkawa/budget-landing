@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import clsx from 'clsx';
 import { Trash2, Edit2, User, Calendar as CalendarIcon, CalendarRange, Users, Search, ArrowUpDown, ListChecks } from 'lucide-react';
 import { Resource } from '@/types';
 import { useResourceStats, getCachedResourceStats } from '@/src/hooks/useResourceStats';
@@ -87,8 +88,12 @@ const ResourceRow = React.memo(({ resource, currentYear, isEditing, isReadOnly, 
             {/* === MOBILE CARD VIEW (< lg) === */}
             <div
                 onClick={handleRowClick}
-                className={`lg:hidden border-b border-slate-100 p-4 transition-colors ${bulkEditMode ? 'cursor-pointer' : ''
-                    } ${isSelected ? 'bg-brand-50/60' : 'hover:bg-slate-50'} ${isEditing && !bulkEditMode ? 'bg-blue-50/50' : ''}`}
+                className={clsx(
+                    'lg:hidden border-b border-slate-100 p-4 transition-colors',
+                    bulkEditMode && 'cursor-pointer',
+                    isSelected ? 'bg-brand-50/60' : 'hover:bg-slate-50',
+                    isEditing && !bulkEditMode && 'bg-blue-50/50'
+                )}
             >
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -110,10 +115,12 @@ const ResourceRow = React.memo(({ resource, currentYear, isEditing, isReadOnly, 
                                         {resource.tribe}
                                     </span>
                                 )}
-                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold border ${resource.contractType === 'INTERNAL' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                                        resource.contractType === 'EXTERNAL' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                                            'bg-slate-100 text-slate-600 border-slate-200'
-                                    }`}>{resource.contractType || 'EXT'}</span>
+                                <span className={clsx(
+                                    'inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold border',
+                                    resource.contractType === 'INTERNAL' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                                    resource.contractType === 'EXTERNAL' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                    'bg-slate-100 text-slate-600 border-slate-200'
+                                )}>{resource.contractType || 'EXT'}</span>
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">{resource.country}</span>
                             </div>
                         </div>
@@ -139,8 +146,12 @@ const ResourceRow = React.memo(({ resource, currentYear, isEditing, isReadOnly, 
             {/* === DESKTOP ROW VIEW (>= lg) === */}
             <div
                 onClick={handleRowClick}
-                className={`hidden lg:flex items-center border-b border-slate-100 transition-colors group ${bulkEditMode ? 'cursor-pointer' : ''
-                    } ${isSelected ? 'bg-brand-50/60' : 'hover:bg-slate-50'} ${isEditing && !bulkEditMode ? 'bg-blue-50/50' : ''}`}
+                className={clsx(
+                    'hidden lg:flex items-center border-b border-slate-100 transition-colors group',
+                    bulkEditMode && 'cursor-pointer',
+                    isSelected ? 'bg-brand-50/60' : 'hover:bg-slate-50',
+                    isEditing && !bulkEditMode && 'bg-blue-50/50'
+                )}
             >
                 {/* Checkbox column */}
                 {bulkEditMode && (
@@ -227,7 +238,7 @@ const ResourceRow = React.memo(({ resource, currentYear, isEditing, isReadOnly, 
                     </div>
 
                     {/* 9. Actions */}
-                    <div className="text-center flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="text-center flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity">
                         {actionButtons}
                     </div>
                 </div>
@@ -259,8 +270,8 @@ export default function ResourceList({ resources, onEdit, onDelete, onCalendarCl
         // 2. Sort
         if (sortConfig) {
             filtered = [...filtered].sort((a, b) => {
-                let valA: any;
-                let valB: any;
+                let valA: string | number;
+                let valB: string | number;
 
                 if (sortConfig.key === 'stats.days' || sortConfig.key === 'stats.cost') {
                     const statA = getCachedResourceStats(a, currentYear);
@@ -268,8 +279,10 @@ export default function ResourceList({ resources, onEdit, onDelete, onCalendarCl
                     valA = sortConfig.key === 'stats.days' ? statA.days : statA.cost;
                     valB = sortConfig.key === 'stats.days' ? statB.days : statB.cost;
                 } else {
-                    valA = a[sortConfig.key as keyof Resource];
-                    valB = b[sortConfig.key as keyof Resource];
+                    const rawA = a[sortConfig.key as keyof Resource];
+                    const rawB = b[sortConfig.key as keyof Resource];
+                    valA = typeof rawA === 'string' || typeof rawA === 'number' ? rawA : '';
+                    valB = typeof rawB === 'string' || typeof rawB === 'number' ? rawB : '';
                 }
 
                 // Handle null/undefined
@@ -409,7 +422,7 @@ export default function ResourceList({ resources, onEdit, onDelete, onCalendarCl
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-slate-400 italic gap-2">
                         <User className="w-8 h-8 opacity-20" />
-                        {searchTerm ? 'No matching resources found.' : 'No resources defined yet.'}
+                        {searchTerm ? t('resources.noMatchingResources') : t('resources.noResourcesDefined')}
                     </div>
                 )}
             </div>

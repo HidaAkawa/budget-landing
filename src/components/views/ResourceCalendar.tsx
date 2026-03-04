@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Layers, Check, Download, Calculator, Banknote, Loader2, CalendarRange, Lock } from 'lucide-react';
+import clsx from 'clsx';
+import { ArrowLeft, Layers, Check, Download, Calculator, Banknote, Loader2, CalendarRange, Lock, ChevronDown, ChevronUp, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import { format, endOfMonth, eachDayOfInterval, addDays, startOfMonth } from 'date-fns';
 import { Resource, OverrideValue, Country } from '@/types';
 import { calculateDayStatus } from '@/utils';
@@ -29,6 +30,10 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [statsMode, setStatsMode] = useState<'days' | 'cost'>('days');
     const [isLoadingHolidays, setIsLoadingHolidays] = useState(false);
+
+    // Mobile toggle states
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    const [legendOpen, setLegendOpen] = useState(false);
 
     // Bulk Edit State
     const [bulkStart, setBulkStart] = useState('');
@@ -99,7 +104,7 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
 
             const data = await response.json();
             // Extract date strings (YYYY-MM-DD)
-            const holidays: string[] = data.map((h: any) => h.date);
+            const holidays: string[] = (data as Array<{ date: string }>).map((h) => h.date);
 
             setIsLoadingHolidays(false);
 
@@ -214,8 +219,22 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                     </div>
                 </div>
 
-                <div className="flex items-center gap-6">
-                    <div className="grid grid-cols-2 md:flex md:items-center gap-2 md:gap-3 text-xs font-medium text-slate-500 md:border-r border-slate-200 md:pr-6">
+                <div className="flex items-center gap-4">
+                    {/* Legend toggle button on small screens */}
+                    <button
+                        onClick={() => setLegendOpen(prev => !prev)}
+                        className="lg:hidden flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg transition-colors"
+                    >
+                        {legendOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        {t('calendar.legend')}
+                    </button>
+
+                    {/* Legend — always visible on lg+, toggled on smaller */}
+                    <div className={clsx(
+                        'grid grid-cols-2 md:flex md:items-center gap-2 md:gap-3 text-xs font-medium text-slate-500 md:border-r border-slate-200 md:pr-6',
+                        'lg:flex',
+                        !legendOpen && 'hidden lg:flex'
+                    )}>
                         <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-slate-200 rounded-sm"></div>{t('calendar.work')}</span>
                         <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-amber-100 border border-amber-200 rounded-sm"></div>{t('calendar.half')}</span>
                         <span className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-100 border border-red-200 rounded-sm"></div>{t('calendar.leave')}</span>
@@ -233,22 +252,37 @@ export default function ResourceCalendar({ resource, onUpdateOverride, onBulkUpd
                             title={t('calendar.loadHolidays', { country: resource.country, year: selectedYear })}
                         >
                             {isLoadingHolidays ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                            {isLoadingHolidays ? t('calendar.loadingHolidays') : t('calendar.loadHolidaysBtn')}
+                            <span className="hidden sm:inline">{isLoadingHolidays ? t('calendar.loadingHolidays') : t('calendar.loadHolidaysBtn')}</span>
                         </button>
                     )}
                 </div>
             </div>
 
             <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+                {/* Mobile toggle for mass edit panel */}
+                {!isReadOnly && (
+                    <button
+                        onClick={() => setMobileSidebarOpen(prev => !prev)}
+                        className="md:hidden flex items-center gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                    >
+                        {mobileSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+                        {t('calendar.massEditPanel')}
+                        {mobileSidebarOpen ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
+                    </button>
+                )}
+
                 {/* Sidebar: Mass Update - Hidden or Disabled in ReadOnly */}
                 {isReadOnly ? (
-                    <div className="w-full md:w-72 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex flex-col items-center justify-center text-center text-slate-400 shrink-0 z-10">
+                    <div className="hidden md:flex w-72 bg-slate-50 border-r border-slate-200 p-6 flex-col items-center justify-center text-center text-slate-400 shrink-0 z-10">
                         <Lock className="w-8 h-8 mb-3 text-slate-300" />
                         <h4 className="font-medium text-slate-500">{t('calendar.massUpdateLocked')}</h4>
                         <p className="text-xs mt-1">{t('calendar.readOnlyActive')}</p>
                     </div>
                 ) : (
-                    <div className="w-full md:w-72 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex flex-col gap-6 overflow-y-auto shrink-0 z-10">
+                    <div className={clsx(
+                        'w-full md:w-72 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex-col gap-6 overflow-y-auto shrink-0 z-10',
+                        mobileSidebarOpen ? 'flex' : 'hidden md:flex'
+                    )}>
                         <div>
                             <h3 className="font-semibold text-slate-800 flex items-center gap-2 mb-4">
                                 <Layers className="w-4 h-4 text-brand-600" />

@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle, XCircle, Activity, Shield, Play, AlertTriangle, Users } from 'lucide-react';
 import { User } from 'firebase/auth';
-import { db } from '@/src/services/firebase';
-import { collection, getDocs, query, where, limit, getDoc, doc } from 'firebase/firestore';
+import { diagnosticsService } from '@/src/services/diagnosticsService';
 import UsersManager from '@/src/components/settings/UsersManager';
 import { UserRole } from '@/src/services/userService';
 
@@ -63,31 +62,26 @@ export default function SettingsView({ user, userRole, onResetData }: SettingsVi
 
     // 2. CONNECTION CHECK (Ping)
     updateResult('conn', { status: 'running' });
-    const start = performance.now();
-    try {
-      await getDoc(doc(db, "health_check", "ping"));
-      const end = performance.now();
-      updateResult('conn', { status: 'success', latency: Math.round(end - start), message: t('settings.connectionEstablished') });
-    } catch (e: unknown) {
-      const err = e as { code?: string; message?: string };
-      if (err.code === 'permission-denied') {
-        const end = performance.now();
-        updateResult('conn', { status: 'success', latency: Math.round(end - start), message: t('settings.connectionEstablishedRules') });
-      } else {
-        console.error(e);
-        updateResult('conn', { status: 'error', message: err.message || t('settings.networkError') });
-        return;
-      }
+    const connResult = await diagnosticsService.checkConnection();
+    if (connResult.ok) {
+      updateResult('conn', {
+        status: 'success',
+        latency: connResult.latencyMs,
+        message: connResult.message === 'permission-denied'
+          ? t('settings.connectionEstablishedRules')
+          : t('settings.connectionEstablished'),
+      });
+    } else {
+      updateResult('conn', { status: 'error', message: connResult.message || t('settings.networkError') });
+      return;
     }
 
     // 3. PERMISSIONS CHECK
     updateResult('perm', { status: 'running' });
-    try {
-      const q = query(collection(db, "scenarios"), where("ownerId", "==", user.email), limit(1));
-      await getDocs(q);
+    const permResult = await diagnosticsService.checkPermissions(user.email || '');
+    if (permResult.ok) {
       updateResult('perm', { status: 'success', message: t('settings.dataAccessOk') });
-    } catch (e: unknown) {
-      console.error(e);
+    } else {
       updateResult('perm', { status: 'error', message: t('settings.dataAccessDenied') });
     }
   };

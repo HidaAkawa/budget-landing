@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, useEffect } from 'react';
 import { LayoutDashboard, Users, Calculator, LogOut, Wallet, FileClock, ShieldAlert, Loader, FolderPlus, Settings, Lock, Calendar as CalendarIcon, PanelLeftClose, PanelLeftOpen, Menu, X } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import clsx from 'clsx';
 import { APP_NAME } from '@/constants';
 import { useAppLogic } from '@/src/hooks/useAppLogic';
 import { useAuth } from '@/src/hooks/useAuth';
@@ -203,10 +204,10 @@ function App() {
         isOpen={isResetModalOpen}
         onClose={() => setIsResetModalOpen(false)}
         onConfirm={handleResetConfirm}
-        title="Réinitialisation complète"
-        description="Êtes-vous sûr de vouloir tout supprimer ? Cette action effacera tous les scénarios de la base de données et est irréversible."
+        title={t('settings.confirmResetTitle')}
+        description={t('settings.confirmResetMessage')}
         isDestructive={true}
-        confirmLabel="Tout Supprimer"
+        confirmLabel={t('settings.confirmResetButton')}
       />
 
       {/* Mobile Overlay Backdrop */}
@@ -218,14 +219,13 @@ function App() {
       )}
 
       {/* Sidebar */}
-      <aside className={`
-        ${sidebarCollapsed ? 'md:w-[60px]' : 'md:w-64'}
-        bg-slate-900 text-slate-300 flex flex-col shrink-0 transition-all duration-300 overflow-hidden
-        fixed inset-y-0 left-0 z-50 w-64
-        ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        md:translate-x-0 md:static md:z-auto
-      `}>
-        <div className={`p-4 flex items-center ${sidebarCollapsed ? 'md:justify-center' : 'justify-between'} text-white`}>
+      <aside className={clsx(
+        'bg-slate-900 text-slate-300 flex flex-col shrink-0 transition-all duration-300 overflow-hidden',
+        'fixed inset-y-0 left-0 z-50 w-64 md:translate-x-0 md:static md:z-auto',
+        sidebarCollapsed ? 'md:w-[60px]' : 'md:w-64',
+        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      )}>
+        <div className={clsx('p-4 flex items-center text-white', sidebarCollapsed ? 'md:justify-center' : 'justify-between')}>
           {(!sidebarCollapsed || mobileSidebarOpen) && (
             <div className="flex items-center gap-3">
               <Calculator className="w-6 h-6 text-brand-500 shrink-0" />
@@ -249,7 +249,7 @@ function App() {
           </button>
         </div>
 
-        <nav className={`flex-1 px-4 ${sidebarCollapsed ? 'md:px-1.5' : 'md:px-4'} space-y-2`}>
+        <nav className={clsx('flex-1 px-4 space-y-2', sidebarCollapsed ? 'md:px-1.5' : 'md:px-4')}>
           {([
             { view: 'dashboard' as const, icon: LayoutDashboard, label: t('sidebar.dashboard') },
             { view: 'budget' as const, icon: Wallet, label: t('sidebar.budget') },
@@ -261,29 +261,37 @@ function App() {
               key={view}
               onClick={() => { setCurrentView(view); setMobileSidebarOpen(false); }}
               title={sidebarCollapsed ? label : undefined}
-              className={`w-full flex items-center gap-3 px-4 ${sidebarCollapsed ? 'md:justify-center md:px-2 md:gap-0' : ''} py-3 rounded-lg transition-colors ${currentView === view ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'}`}
+              className={clsx(
+                'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
+                sidebarCollapsed && 'md:justify-center md:px-2 md:gap-0',
+                currentView === view ? 'bg-brand-600 text-white' : 'hover:bg-slate-800'
+              )}
             >
               <Icon className="w-5 h-5 shrink-0" />
-              <span className={`whitespace-nowrap ${sidebarCollapsed ? 'md:hidden' : ''}`}>{label}</span>
+              <span className={clsx('whitespace-nowrap', sidebarCollapsed && 'md:hidden')}>{label}</span>
             </button>
           ))}
         </nav>
 
-        <div className={`p-4 ${sidebarCollapsed ? 'md:p-1.5' : 'md:p-4'} border-t border-slate-800 space-y-2`}>
+        <div className={clsx('p-4 border-t border-slate-800 space-y-2', sidebarCollapsed ? 'md:p-1.5' : 'md:p-4')}>
           <button
             onClick={() => { setCurrentView('settings'); setMobileSidebarOpen(false); }}
             title={sidebarCollapsed ? t('sidebar.settings') : undefined}
-            className={`w-full flex items-center gap-3 px-4 ${sidebarCollapsed ? 'md:justify-center md:px-2 md:gap-0' : ''} py-2 rounded-lg transition-colors text-sm mb-2 ${currentView === 'settings' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+            className={clsx(
+              'w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-sm mb-2',
+              sidebarCollapsed && 'md:justify-center md:px-2 md:gap-0',
+              currentView === 'settings' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            )}
           >
             <Settings className="w-4 h-4 shrink-0" />
-            <span className={`whitespace-nowrap ${sidebarCollapsed ? 'md:hidden' : ''}`}>{t('sidebar.settings')}</span>
+            <span className={clsx('whitespace-nowrap', sidebarCollapsed && 'md:hidden')}>{t('sidebar.settings')}</span>
           </button>
 
           <LanguageSelector collapsed={sidebarCollapsed} />
 
-          <div className={`flex items-center gap-3 px-2 ${sidebarCollapsed ? 'md:justify-center md:gap-0 md:px-0' : ''} mb-4 pt-2 border-t border-slate-800`}>
+          <div className={clsx('flex items-center gap-3 px-2 mb-4 pt-2 border-t border-slate-800', sidebarCollapsed && 'md:justify-center md:gap-0 md:px-0')}>
             {user.photoURL && <img src={user.photoURL} alt="User avatar" className="w-8 h-8 rounded-full shrink-0" />}
-            <div className={`text-sm ${sidebarCollapsed ? 'md:hidden' : ''}`}>
+            <div className={clsx('text-sm', sidebarCollapsed && 'md:hidden')}>
               <p className="text-white font-medium">{user.displayName}</p>
               <p className="text-xs text-slate-500">{userRole === 'ADMIN' ? t('sidebar.admin') : t('sidebar.user')}</p>
             </div>
@@ -291,10 +299,13 @@ function App() {
           <button
             onClick={handleLogout}
             title={sidebarCollapsed ? t('common.signOut') : undefined}
-            className={`w-full flex items-center gap-2 px-4 ${sidebarCollapsed ? 'md:justify-center md:px-2 md:gap-0' : ''} py-2 text-sm text-slate-400 hover:text-white transition-colors`}
+            className={clsx(
+              'w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors',
+              sidebarCollapsed && 'md:justify-center md:px-2 md:gap-0'
+            )}
           >
             <LogOut className="w-4 h-4 shrink-0" />
-            <span className={`${sidebarCollapsed ? 'md:hidden' : ''}`}>{t('common.signOut')}</span>
+            <span className={clsx(sidebarCollapsed && 'md:hidden')}>{t('common.signOut')}</span>
           </button>
         </div>
       </aside>
@@ -302,10 +313,10 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 overflow-auto relative flex flex-col">
         <header
-          className={`
-            border-b border-slate-200 sticky top-0 z-10 px-4 md:px-8 py-4 flex justify-between items-center shrink-0 transition-colors
-            ${isReadOnly && currentView !== 'settings' && currentView !== 'calendars' ? 'bg-amber-50 border-amber-100' : 'bg-white'}
-          `}
+          className={clsx(
+            'border-b border-slate-200 sticky top-0 z-10 px-4 md:px-8 py-4 flex justify-between items-center shrink-0 transition-colors',
+            isReadOnly && currentView !== 'settings' && currentView !== 'calendars' ? 'bg-amber-50 border-amber-100' : 'bg-white'
+          )}
         >
           <div className="flex items-center gap-3">
             {/* Hamburger button — mobile only */}
@@ -316,7 +327,10 @@ function App() {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <h2 className={`text-lg md:text-xl font-semibold capitalize flex items-center gap-2 ${isReadOnly && currentView !== 'settings' && currentView !== 'calendars' ? 'text-amber-900' : 'text-slate-800'}`}>
+            <h2 className={clsx(
+              'text-lg md:text-xl font-semibold capitalize flex items-center gap-2',
+              isReadOnly && currentView !== 'settings' && currentView !== 'calendars' ? 'text-amber-900' : 'text-slate-800'
+            )}>
               {t(`sidebar.${currentView === 'calendars' ? 'calendars' : currentView}`)}
               {isReadOnly && currentView !== 'settings' && currentView !== 'calendars' && (
                 <Lock className="w-5 h-5 text-amber-600 opacity-75" />
@@ -326,7 +340,10 @@ function App() {
 
           {currentView !== 'settings' && currentView !== 'calendars' && (
             <div className="flex items-center gap-4">
-              <span className={`px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wide border ${scenario.status === 'MASTER' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{scenario.name} ({scenario.status})</span>
+              <span className={clsx(
+                'px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wide border',
+                scenario.status === 'MASTER' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'
+              )}>{scenario.name} ({scenario.status})</span>
             </div>
           )}
         </header>

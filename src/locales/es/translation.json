@@ -132,7 +132,9 @@
     "applying": "Aplicando...",
     "bulkUpdateSuccess": "{{count}} recurso(s) actualizado(s)",
     "bulkUpdateError": "Error durante la actualización masiva.",
-    "applyField": "Aplicar este campo"
+    "applyField": "Aplicar este campo",
+    "noMatchingResources": "No se encontraron recursos.",
+    "noResourcesDefined": "Aún no hay recursos definidos."
   },
   "calendar": {
     "backToList": "Volver a la lista",
@@ -166,7 +168,9 @@
     "month": "Mes",
     "noHolidaysFound": "No se encontraron festivos en la API para {{country}} en {{year}}.",
     "confirmLoadHolidays": "Se encontraron {{count}} festivos para {{country}} en {{year}} vía API.\n\n¿Cargarlos en el calendario como días 'Ausente'?",
-    "loadHolidaysError": "Error al cargar los festivos: {{error}}"
+    "loadHolidaysError": "Error al cargar los festivos: {{error}}",
+    "legend": "Leyenda",
+    "massEditPanel": "Panel de edición masiva"
   },
   "simulation": {
     "newDraftCreated": "Nuevo borrador creado",

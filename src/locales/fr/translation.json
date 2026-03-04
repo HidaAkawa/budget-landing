@@ -132,7 +132,9 @@
     "applying": "Application...",
     "bulkUpdateSuccess": "{{count}} ressource(s) mise(s) à jour",
     "bulkUpdateError": "Erreur lors de la mise à jour groupée.",
-    "applyField": "Appliquer ce champ"
+    "applyField": "Appliquer ce champ",
+    "noMatchingResources": "Aucune ressource correspondante.",
+    "noResourcesDefined": "Aucune ressource définie."
   },
   "calendar": {
     "backToList": "Retour à la liste",
@@ -166,7 +168,9 @@
     "month": "Mois",
     "noHolidaysFound": "Aucun jour férié retourné par l'API pour {{country}} en {{year}}.",
     "confirmLoadHolidays": "{{count}} jours fériés trouvés pour {{country}} en {{year}} via l'API.\n\nLes charger dans le calendrier comme jours « Absent » ?",
-    "loadHolidaysError": "Échec du chargement des jours fériés : {{error}}"
+    "loadHolidaysError": "Échec du chargement des jours fériés : {{error}}",
+    "legend": "Légende",
+    "massEditPanel": "Panneau d'édition groupée"
   },
   "simulation": {
     "newDraftCreated": "Nouveau brouillon créé",

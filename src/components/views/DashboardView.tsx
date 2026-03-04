@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TrendingDown, TrendingUp, AlertCircle, CheckCircle, PieChart, Wallet } from 'lucide-react';
+import { TrendingDown, TrendingUp, AlertCircle, CheckCircle, PieChart, Wallet, type LucideIcon } from 'lucide-react';
 import { BudgetEnvelope, EnvelopeType, Resource } from '@/types';
 import { startOfYear, endOfYear, eachDayOfInterval } from 'date-fns';
 import { calculateDayStatus } from '@/utils';
@@ -90,7 +90,7 @@ export default function DashboardView({ envelopes, resources }: DashboardViewPro
         percent: number,
         colorClass: string,
         barColorClass: string,
-        icon: any
+        icon: LucideIcon
     }) => {
         const isOverBudget = delta < 0;
 
@@ -153,17 +153,17 @@ export default function DashboardView({ envelopes, resources }: DashboardViewPro
                 </div>
 
                 <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                         <p className="text-xs text-slate-400 font-bold uppercase">{t('dashboard.totalBudget')}</p>
                         <p className="font-bold text-slate-800">{formatCompact(stats.budgetTotal)}</p>
                     </div>
                     <div className="hidden sm:block h-8 w-px bg-slate-100"></div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                         <p className="text-xs text-slate-400 font-bold uppercase">{t('dashboard.totalForecast')}</p>
                         <p className="font-bold text-blue-600">{formatCompact(stats.forecastTotal)}</p>
                     </div>
                     <div className="hidden sm:block h-8 w-px bg-slate-100"></div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                         <p className="text-xs text-slate-400 font-bold uppercase">{t('dashboard.netResult')}</p>
                         <p className={`font-bold ${stats.deltaTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCompact(stats.deltaTotal)}</p>
                     </div>
